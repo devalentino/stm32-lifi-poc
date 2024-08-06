@@ -1,6 +1,7 @@
 #include "main.h"
 
 
+uint32_t received_value;
 
 void setup() {
 	setupReceiver();
@@ -12,6 +13,8 @@ int main() {
     setup();
 
     while (true) {
+    	startReceiver();
+
     	if (isButtonPressed()) {
     		enableLedIndicator();
     		transmitOne();
@@ -19,5 +22,7 @@ int main() {
     		disableLedIndicator();
     		transmitZero();
     	}
+
+    	received_value = receive();
     }
 }

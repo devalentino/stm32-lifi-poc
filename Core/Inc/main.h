@@ -27,6 +27,7 @@ extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
+#include "receiver.h"
 #include "transmitter.h"
 #include "utils.h"
 
