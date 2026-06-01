@@ -1,0 +1,56 @@
+# ==========================================
+# STM32 Toolchains & Build Artifacts
+# ==========================================
+Debug/
+Release/
+build/
+bin/
+obj/
+
+# Core Compilation Output Formats
+*.elf
+*.bin
+*.hex
+*.map
+*.o
+*.obj
+*.su
+*.cyclo
+*.d
+
+# ==========================================
+# STM32CubeIDE / Eclipse CDT Settings
+# ==========================================
+.settings/
+*.launch
+
+# Keep core project structures, but ignore localized paths
+# (Uncomment the line below if you prefer generating .project from scratch)
+.project
+.cproject
+
+# ==========================================
+# Visual Studio Code & CMake Settings
+# ==========================================
+.vscode/
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+_deps/
+
+# ==========================================
+# Code Generators (STM32CubeMX / TouchGFX)
+# ==========================================
+# Ignore localized logs but keep workspace rules
+*.log
+.mxproject
+
+# ==========================================
+# Operating System & Temporary Files
+# ==========================================
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.bak
+
