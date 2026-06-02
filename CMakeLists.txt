@@ -50,6 +50,7 @@ set (PROJECT_SOURCES
 	# LIST SOURCE FILES HERE
 	Startup/startup_stm32f411retx.s
 	Sources/lifi_transmitter.c
+	Sources/lifi_receiver.c
 	Sources/main.c
 	Sources/syscalls.c
 	Sources/sysmem.c
