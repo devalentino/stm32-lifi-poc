@@ -72,6 +72,7 @@ void HAL_Hardware_Factory_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_TIM2_CLK_ENABLE();
   __HAL_RCC_TIM3_CLK_ENABLE();
+  __HAL_RCC_SYSCFG_CLK_ENABLE(); 
 
   // GPIOA transmitter setup
   {
