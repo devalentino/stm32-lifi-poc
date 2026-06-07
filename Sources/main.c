@@ -32,7 +32,7 @@ int main(void)
         LiFi_Transmitter_SendByte(&transmitter, 'S');
       }
 
-      if (LiFi_Receiver_ReadByte(&receiver, &received_char))
+      if (LiFi_Receiver_ReadBuffer(&receiver, &received_char))
       {
          __NOP();
       }

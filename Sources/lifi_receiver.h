@@ -18,7 +18,7 @@ typedef struct {
 
 void LiFi_Receiver_Init(LiFi_Receiver_t *receiver, TIM_HandleTypeDef *htim, GPIO_TypeDef *port, uint16_t pin);
 
-bool LiFi_Receiver_ReadByte(LiFi_Receiver_t *receiver, uint8_t *out_byte);
+bool LiFi_Receiver_ReadBuffer(LiFi_Receiver_t *receiver, uint8_t *out_byte);
 
 void LiFi_Receiver_GPIO_Callback(LiFi_Receiver_t *receiver);
 

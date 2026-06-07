@@ -16,15 +16,6 @@ void LiFi_Receiver_Init(LiFi_Receiver_t *receiver, TIM_HandleTypeDef *htim, GPIO
     receiver->has_new_data = false;
 }
 
-bool LiFi_Receiver_ReadByte(LiFi_Receiver_t *receiver, uint8_t *out_byte)
-{
-    if (!receiver->has_new_data) return false;
-    
-    *out_byte = receiver->rx_byte;
-    receiver->has_new_data = false;
-    return true;
-}
-
 void LiFi_Receiver_GPIO_Callback(LiFi_Receiver_t *receiver)
 {
     uint32_t time_elapsed = __HAL_TIM_GET_COUNTER(receiver->htim);
@@ -57,5 +48,12 @@ void LiFi_Receiver_GPIO_Callback(LiFi_Receiver_t *receiver)
     if (receiver->bit_count >= 8) {
         receiver->has_new_data = true;
         receiver->bit_count = 0;
+
+        LiFi_Receiver_NewByteReceived(receiver);
     }
+}
+
+__weak void LiFi_Receiver_NewByteReceived(LiFi_Receiver_t *receiver) 
+{
+
 }
