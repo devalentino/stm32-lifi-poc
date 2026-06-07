@@ -13,6 +13,8 @@ void LiFi_Receiver_Init(LiFi_Receiver_t *receiver, TIM_HandleTypeDef *htim, GPIO
     receiver->rx_byte = 0;
     receiver->bit_count = 0;
     receiver->is_first_half = true;
+    receiver->on_byte_received = NULL;
+    receiver->on_byte_received_callback_context = NULL;
 }
 
 void LiFi_Receiver_ReadBuffer(LiFi_Receiver_t *receiver) {

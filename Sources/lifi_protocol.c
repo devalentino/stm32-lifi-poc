@@ -2,6 +2,7 @@
 #include "lifi_transmitter.h"
 #include "lifi_receiver.h"
 #include <stdint.h>
+#include <string.h>
 
 static uint8_t START = 0x7E;
 static uint8_t ID    = 0;
@@ -132,14 +133,16 @@ void LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length)
         payload_length = LIFI_TX_BUFFER_SIZE - 4;
     }
     wrap_to_lifi_protocol_package(socket->tx_package, socket->tx_buffer, payload_length, socket->tx_package_id);
-    LiFi_Transmitter_TransmitBuffer(socket->transmitter, socket->tx_package, payload_length);
+
+    uint8_t package_length = payload_length + 4;
+    LiFi_Transmitter_TransmitBuffer(socket->transmitter, socket->tx_package, package_length);
     socket->tx_bytes_processed += payload_length;
 }
 
 void LiFi_Socket_Read(LiFi_Socket_t *socket, uint8_t *buffer)
 {
     socket->rx_buffer = buffer;
-    socket->rx_package = 0;
+    memset(socket->rx_package, 0, sizeof(socket->rx_package));
     socket->rx_package_bytes_received = 0;
     socket->rx_package_id = 0;
 

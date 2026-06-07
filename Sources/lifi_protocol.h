@@ -12,11 +12,11 @@ typedef struct {
     uint8_t            *tx_buffer;
     uint8_t             tx_buffer_length;
     uint8_t             tx_bytes_processed;
-    uint8_t            *tx_package;
+    uint8_t             tx_package[LIFI_TX_BUFFER_SIZE];
     uint8_t             tx_package_id;
 
     uint8_t            *rx_buffer;
-    uint8_t            *rx_package;
+    uint8_t             rx_package[LIFI_TX_BUFFER_SIZE];
     uint8_t             rx_package_id;
     uint8_t             rx_package_bytes_received;
 } LiFi_Socket_t;

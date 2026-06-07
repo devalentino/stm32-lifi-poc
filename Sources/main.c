@@ -20,11 +20,12 @@ int main(void)
 {
   HAL_Init();
   SystemClock_Config();
-  HAL_Hardware_Factory_Init();
 
   LiFi_Transmitter_Init(&transmitter, &transmitter_timer, GPIOA, GPIO_PIN_5);
   LiFi_Receiver_Init(&receiver, &receiver_timer, GPIOA, GPIO_PIN_1);
   LiFi_Socket_Init(&socket, &transmitter, &receiver);
+
+  HAL_Hardware_Factory_Init();
 
   char content[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat";
   char read_buffer[256] = {0};
@@ -137,6 +138,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   {
     LiFi_Receiver_GPIO_Callback(&receiver);
   }
+}
+
+void SysTick_Handler(void)
+{
+  HAL_IncTick();
 }
 
 void Error_Handler(void)

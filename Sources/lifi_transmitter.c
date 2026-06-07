@@ -30,6 +30,8 @@ void LiFi_Transmitter_Init(LiFi_Transmitter_t *transmitter, TIM_HandleTypeDef *h
     transmitter->gpio_pin = pin;
     transmitter->current_half_bit_index = -1;
     transmitter->is_busy = false;
+    transmitter->on_buffer_transmitted = NULL;
+    transmitter->on_buffer_transmitted_callback_context = NULL;
 }
 
 void LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t *transmitter, const uint8_t *buffer, uint8_t length)
