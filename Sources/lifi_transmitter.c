@@ -32,10 +32,10 @@ void LiFi_Transmitter_Init(LiFi_Transmitter_t *transmitter, TIM_HandleTypeDef *h
     transmitter->is_busy = false;
 }
 
-bool LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t *transmitter, const uint8_t *buffer, uint8_t length)
+void LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t *transmitter, const uint8_t *buffer, uint8_t length)
 {
-    if (transmitter->is_busy) return false;
-    if (length > LIFI_TX_BUFFER_SIZE || length == 0) return false;
+    if (transmitter->is_busy) return;
+    if (length > LIFI_TX_BUFFER_SIZE || length == 0) return;
 
     transmitter->is_busy = true;
     
@@ -47,8 +47,6 @@ bool LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t *transmitter, const uint
     transmitter->current_half_bit_index = 0;
 
     HAL_TIM_Base_Start_IT(transmitter->htim);
-
-    return true;
 }
 
 void LiFi_Transmitter_TimerCallback(LiFi_Transmitter_t *transmitter)

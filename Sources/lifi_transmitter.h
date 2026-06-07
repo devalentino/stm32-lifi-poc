@@ -28,7 +28,7 @@ typedef struct {
 
 void LiFi_Transmitter_Init(LiFi_Transmitter_t *transmitter, TIM_HandleTypeDef *htim, GPIO_TypeDef *port, uint16_t pin);
 
-bool LiFi_Transmitter_SendBuffer(LiFi_Transmitter_t *transmitter, const uint8_t *buffer, uint8_t length);
+void LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t *transmitter, const uint8_t *buffer, uint8_t length);
 
 void LiFi_Transmitter_TimerCallback(LiFi_Transmitter_t *transmitter);
 

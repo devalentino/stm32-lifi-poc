@@ -1,11 +1,13 @@
 #ifndef LIFI_PROTOCOL_H
 #define LIFI_PROTOCOL_H
 
+#include "lifi_receiver.h"
+#include "lifi_transmitter.h"
 #include <stdint.h>
 
 typedef struct {
-    LiFi_Transmitter_t  transmitter;
-    LiFi_Receiver_t     receiver;
+    LiFi_Transmitter_t  *transmitter;
+    LiFi_Receiver_t     *receiver;
 
     uint8_t            *tx_buffer;
     uint8_t             tx_buffer_length;
