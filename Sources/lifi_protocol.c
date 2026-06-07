@@ -3,6 +3,7 @@
 #include "lifi_receiver.h"
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 
 static uint8_t START = 0x7E;
 static uint8_t ID    = 0;
@@ -87,8 +88,9 @@ void on_package_received(LiFi_Socket_t *socket) {
 
 static void on_byte_received(void *context) {
     LiFi_Socket_t *socket = (LiFi_Socket_t *)context;
+    printf("Received new byte: %d\n", socket->receiver->rx_byte);
 
-    socket->rx_package[socket->rx_package_bytes_received] = socket->receiver->rx_byte;
+    socket->rx_package[socket->rx_package_bytes_received++] = socket->receiver->rx_byte;
 
     if(socket->rx_package_bytes_received == 0 && socket->receiver->rx_byte != START) {
         return;

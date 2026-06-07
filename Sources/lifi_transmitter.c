@@ -10,7 +10,7 @@ static void copy_to_tx_buffer(uint8_t *tx_buffer, const uint8_t *buffer, uint8_t
 
 static void byte_to_manchester(uint8_t *manchester_buffer, uint8_t payload)
 {
-    for (int i = 0; i < 8; i++)
+    for (uint8_t i = 0; i < 8; i++)
     {
         uint8_t bit = (payload >> (7 - i)) & 0x01;
         if (bit == 1) {
@@ -54,7 +54,7 @@ void LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t *transmitter, const uint
 void LiFi_Transmitter_TimerCallback(LiFi_Transmitter_t *transmitter)
 {
     // buffer is fully sent, stop timer, disable laser and exit
-    if (transmitter->current_half_bit_index == 16 && transmitter->current_tx_byte_index == transmitter->current_tx_byte_index) 
+    if (transmitter->current_half_bit_index == 16 && transmitter->current_tx_byte_index == transmitter->tx_total_bytes) 
     {
         HAL_TIM_Base_Stop_IT(transmitter->htim);
         HAL_GPIO_WritePin(transmitter->gpio_port, transmitter->gpio_pin, GPIO_PIN_RESET);
@@ -67,11 +67,11 @@ void LiFi_Transmitter_TimerCallback(LiFi_Transmitter_t *transmitter)
     }
 
     // if byte is transmitted, but buffer is not transmitted yet, configure next byte transmission
-    if (transmitter->current_half_bit_index == 16 && transmitter->current_tx_byte_index < transmitter->current_tx_byte_index)
+    if (transmitter->current_half_bit_index == 16 && transmitter->current_tx_byte_index < transmitter->tx_total_bytes)
     {
-        byte_to_manchester(transmitter->manchester_buffer, transmitter->tx_buffer[transmitter->current_tx_byte_index]);
         transmitter->current_half_bit_index = 0;
         transmitter->current_tx_byte_index++;
+        byte_to_manchester(transmitter->manchester_buffer, transmitter->tx_buffer[transmitter->current_tx_byte_index]);
     }
 
     // continue transmitting byte
