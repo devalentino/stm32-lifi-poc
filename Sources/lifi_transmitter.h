@@ -30,8 +30,6 @@ void LiFi_Transmitter_Init(LiFi_Transmitter_t *transmitter, TIM_HandleTypeDef *h
 
 bool LiFi_Transmitter_SendBuffer(LiFi_Transmitter_t *transmitter, const uint8_t *buffer, uint8_t length);
 
-bool LiFi_Transmitter_IsBusy(LiFi_Transmitter_t *transmitter);
-
 void LiFi_Transmitter_TimerCallback(LiFi_Transmitter_t *transmitter);
 
 #endif

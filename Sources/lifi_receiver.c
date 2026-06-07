@@ -13,7 +13,12 @@ void LiFi_Receiver_Init(LiFi_Receiver_t *receiver, TIM_HandleTypeDef *htim, GPIO
     receiver->rx_byte = 0;
     receiver->bit_count = 0;
     receiver->is_first_half = true;
-    receiver->has_new_data = false;
+}
+
+void LiFi_Receiver_ReadBuffer(LiFi_Receiver_t *receiver) {
+    receiver->rx_byte = 0;
+    receiver->bit_count = 0;
+    receiver->is_first_half = true;
 }
 
 void LiFi_Receiver_GPIO_Callback(LiFi_Receiver_t *receiver)
@@ -46,14 +51,10 @@ void LiFi_Receiver_GPIO_Callback(LiFi_Receiver_t *receiver)
     }
 
     if (receiver->bit_count >= 8) {
-        receiver->has_new_data = true;
         receiver->bit_count = 0;
 
-        LiFi_Receiver_NewByteReceived(receiver);
+        if (receiver->on_byte_received != NULL && receiver->on_byte_received_callback_context != NULL) {
+            receiver->on_byte_received(receiver->on_byte_received_callback_context);
+        }
     }
-}
-
-__weak void LiFi_Receiver_NewByteReceived(LiFi_Receiver_t *receiver) 
-{
-
 }

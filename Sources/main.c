@@ -1,6 +1,8 @@
 #include "stm32f4xx_hal.h"
 #include "lifi_transmitter.h"
-#include "lifi_receiver.h"
+#include "lifi_receiver.h"  
+#include "lifi_protocol.h"
+#include <string.h>
 
 void SystemClock_Config(void);
 void Error_Handler(void);
@@ -11,7 +13,7 @@ TIM_HandleTypeDef receiver_timer;
 
 LiFi_Transmitter_t transmitter;
 LiFi_Receiver_t receiver;
-
+LiFi_Socket_t socket;
 
 
 int main(void)
@@ -22,23 +24,17 @@ int main(void)
 
   LiFi_Transmitter_Init(&transmitter, &transmitter_timer, GPIOA, GPIO_PIN_5);
   LiFi_Receiver_Init(&receiver, &receiver_timer, GPIOA, GPIO_PIN_1);
+  LiFi_Socket_Init(&socket, &transmitter, &receiver);
 
-  uint8_t received_char = 0;
+  char content[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat";
+  char read_buffer[256] = {0};
 
-  while (1)
-    {
-      if (!LiFi_Transmitter_IsBusy(&transmitter))
-      {
-        LiFi_Transmitter_SendByte(&transmitter, 'S');
-      }
+  LiFi_Socket_Send(&socket, (uint8_t *) content, strlen(content));
+  LiFi_Socket_Read(&socket, (uint8_t *) read_buffer);
 
-      if (LiFi_Receiver_ReadBuffer(&receiver, &received_char))
-      {
-         __NOP();
-      }
-
-      HAL_Delay(1000);
-    }
+  while (1) {
+    HAL_Delay(1000);
+  }
 }
 
 void SystemClock_Config(void)
