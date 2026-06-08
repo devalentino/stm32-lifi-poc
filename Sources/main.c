@@ -1,4 +1,5 @@
 #include "stm32f4xx_hal.h"
+#include "lifi_const.h"
 #include "lifi_transmitter.h"
 #include "lifi_receiver.h"  
 #include "lifi_protocol.h"
@@ -82,9 +83,9 @@ void HAL_Hardware_Factory_Init(void)
 	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 
 	  transmitter_timer.Instance = TIM2;
-	  transmitter_timer.Init.Prescaler = 0;
+	  transmitter_timer.Init.Prescaler = LIFI_TIMER_PRESCALER;
 	  transmitter_timer.Init.CounterMode = TIM_COUNTERMODE_UP;
-	  transmitter_timer.Init.Period = 4000 - 1;
+	  transmitter_timer.Init.Period = LIFI_TIMER_PERIOD;
 	  transmitter_timer.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	  HAL_TIM_Base_Init(&transmitter_timer);
 
@@ -102,7 +103,7 @@ void HAL_Hardware_Factory_Init(void)
 	  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 	  receiver_timer.Instance = TIM3;
-	  receiver_timer.Init.Prescaler = 16 - 1;
+	  receiver_timer.Init.Prescaler = LIFI_TIMER_PRESCALER;
 	  receiver_timer.Init.CounterMode = TIM_COUNTERMODE_UP;
 	  receiver_timer.Init.Period = 0xFFFF;
 	  receiver_timer.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;

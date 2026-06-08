@@ -1,9 +1,6 @@
+#include "lifi_const.h"
+#include <stdint.h>
 #include "lifi_receiver.h"
-
-#define T_SHORT_MIN  150
-#define T_SHORT_MAX  350
-#define T_LONG_MIN   400
-#define T_LONG_MAX   600
 
 void LiFi_Receiver_Init(LiFi_Receiver_t *receiver, TIM_HandleTypeDef *htim, GPIO_TypeDef *port, uint16_t pin)
 {
@@ -45,6 +42,7 @@ void LiFi_Receiver_GPIO_Callback(LiFi_Receiver_t *receiver)
 
     if ((is_half_period && receiver->is_first_half) || is_full_period) {
         uint8_t bit = (pin_state == GPIO_PIN_RESET) ? 1 : 0;
+        receiver->is_first_half = false;
 
         receiver->rx_byte = (receiver->rx_byte << 1) | bit;
         if (!receiver->is_synced && receiver->rx_byte != START_BYTE) {
@@ -57,7 +55,6 @@ void LiFi_Receiver_GPIO_Callback(LiFi_Receiver_t *receiver)
         }
         
         receiver->bit_count++;
-        receiver->is_first_half = false;
     } else {
         receiver->is_first_half = true;
     }

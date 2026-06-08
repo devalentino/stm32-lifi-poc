@@ -52,7 +52,7 @@ static void wrap_to_lifi_protocol_package(uint8_t *dest_buffer, uint8_t *source_
         dest_buffer[index++] = source_buffer[i];
     }
 
-    dest_buffer[index] = calculate_crc(source_buffer, length - 1);
+    dest_buffer[index] = calculate_crc(source_buffer, length);
 }
 
 static void on_buffer_transmitted(void *context)
@@ -81,13 +81,13 @@ void on_package_received(LiFi_Socket_t *socket) {
         return;
     }
 
-    uint8_t crc = socket->rx_package[socket->rx_package_bytes_received];
-    uint8_t package_length = socket->rx_package[2];
-    if (crc != calculate_crc(socket->rx_package + 3, package_length)) {
+    uint8_t crc = socket->rx_package[socket->rx_package_bytes_received - 1];
+    uint8_t payload_length = socket->rx_package[2];
+    if (crc != calculate_crc(socket->rx_package + 3, payload_length)) {
         return;
     }
 
-    for (uint8_t i = 0; i < package_length; i++) {
+    for (uint8_t i = 0; i < payload_length; i++) {
         (*socket->rx_buffer) = socket->rx_package[i + 3];
     }
 
@@ -96,7 +96,6 @@ void on_package_received(LiFi_Socket_t *socket) {
 
 static void on_byte_received(void *context) {
     LiFi_Socket_t *socket = (LiFi_Socket_t *)context;
-    printf("Received new byte: %d\n", socket->receiver->rx_byte);
 
     if(socket->rx_package_bytes_received == 0 && socket->receiver->rx_byte != START_BYTE) {
         return;
@@ -108,8 +107,9 @@ static void on_byte_received(void *context) {
         return;
     }
 
-    uint8_t package_length = socket->rx_package[2];
-    uint8_t is_full_package_received = socket->rx_package_bytes_received - 4 >= package_length;
+    uint8_t payload_length = socket->rx_package[2];
+    uint8_t package_length = payload_length + 4;
+    uint8_t is_full_package_received = socket->rx_package_bytes_received >= package_length;
     if (!is_full_package_received)
     {
         return;
@@ -144,7 +144,7 @@ void LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length)
     }
     wrap_to_lifi_protocol_package(socket->tx_package, socket->tx_buffer, payload_length, socket->tx_package_id, true);
 
-    uint8_t package_length = payload_length + 4;
+    uint8_t package_length = payload_length + 5;
     LiFi_Transmitter_TransmitBuffer(socket->transmitter, socket->tx_package, package_length);
     socket->tx_bytes_processed += payload_length;
 }
