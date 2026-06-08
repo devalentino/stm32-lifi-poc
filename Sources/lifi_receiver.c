@@ -10,6 +10,7 @@ void LiFi_Receiver_Init(LiFi_Receiver_t *receiver, TIM_HandleTypeDef *htim, GPIO
     receiver->htim = htim;
     receiver->gpio_port = port;
     receiver->gpio_pin = pin;
+    receiver->is_synced = false;
     receiver->rx_byte = 0;
     receiver->bit_count = 0;
     receiver->is_first_half = true;
@@ -44,8 +45,17 @@ void LiFi_Receiver_GPIO_Callback(LiFi_Receiver_t *receiver)
 
     if ((is_half_period && receiver->is_first_half) || is_full_period) {
         uint8_t bit = (pin_state == GPIO_PIN_RESET) ? 1 : 0;
-        
+
         receiver->rx_byte = (receiver->rx_byte << 1) | bit;
+        if (!receiver->is_synced && receiver->rx_byte != START_BYTE) {
+            return;
+        }
+
+        if (!receiver->is_synced && receiver->rx_byte == START_BYTE) {
+            receiver->is_synced = true;
+            receiver->bit_count = 8;
+        }
+        
         receiver->bit_count++;
         receiver->is_first_half = false;
     } else {
