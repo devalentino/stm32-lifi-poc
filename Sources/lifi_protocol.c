@@ -3,7 +3,6 @@
 #include "lifi_receiver.h"
 #include <stdint.h>
 #include <string.h>
-#include <stdio.h>
 
 #define PREAMBULE 0x55;
 
