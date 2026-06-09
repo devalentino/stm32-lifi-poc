@@ -1,6 +1,9 @@
 #include "stm32f4xx_hal.h"
+#include "lifi_const.h"
 #include "lifi_transmitter.h"
-#include "lifi_receiver.h"
+#include "lifi_receiver.h"  
+#include "lifi_protocol.h"
+#include <string.h>
 
 void SystemClock_Config(void);
 void Error_Handler(void);
@@ -11,34 +14,29 @@ TIM_HandleTypeDef receiver_timer;
 
 LiFi_Transmitter_t transmitter;
 LiFi_Receiver_t receiver;
-
+LiFi_Socket_t socket;
 
 
 int main(void)
 {
   HAL_Init();
   SystemClock_Config();
-  HAL_Hardware_Factory_Init();
 
   LiFi_Transmitter_Init(&transmitter, &transmitter_timer, GPIOA, GPIO_PIN_5);
   LiFi_Receiver_Init(&receiver, &receiver_timer, GPIOA, GPIO_PIN_1);
+  LiFi_Socket_Init(&socket, &transmitter, &receiver);
 
-  uint8_t received_char = 0;
+  HAL_Hardware_Factory_Init();
 
-  while (1)
-    {
-      if (!LiFi_Transmitter_IsBusy(&transmitter))
-      {
-        LiFi_Transmitter_SendByte(&transmitter, 'S');
-      }
+  char content[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat";
+  char read_buffer[256] = {0};
 
-      if (LiFi_Receiver_ReadByte(&receiver, &received_char))
-      {
-         __NOP();
-      }
+  LiFi_Socket_Send(&socket, (uint8_t *) content, strlen(content));
+  LiFi_Socket_Read(&socket, (uint8_t *) read_buffer);
 
-      HAL_Delay(1000);
-    }
+  while (1) {
+    HAL_Delay(1000);
+  }
 }
 
 void SystemClock_Config(void)
@@ -85,9 +83,9 @@ void HAL_Hardware_Factory_Init(void)
 	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 
 	  transmitter_timer.Instance = TIM2;
-	  transmitter_timer.Init.Prescaler = 0;
+	  transmitter_timer.Init.Prescaler = LIFI_TIMER_PRESCALER;
 	  transmitter_timer.Init.CounterMode = TIM_COUNTERMODE_UP;
-	  transmitter_timer.Init.Period = 4000 - 1;
+	  transmitter_timer.Init.Period = LIFI_TIMER_PERIOD;
 	  transmitter_timer.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	  HAL_TIM_Base_Init(&transmitter_timer);
 
@@ -105,7 +103,7 @@ void HAL_Hardware_Factory_Init(void)
 	  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 	  receiver_timer.Instance = TIM3;
-	  receiver_timer.Init.Prescaler = 16 - 1;
+	  receiver_timer.Init.Prescaler = LIFI_TIMER_PRESCALER;
 	  receiver_timer.Init.CounterMode = TIM_COUNTERMODE_UP;
 	  receiver_timer.Init.Period = 0xFFFF;
 	  receiver_timer.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -141,6 +139,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   {
     LiFi_Receiver_GPIO_Callback(&receiver);
   }
+}
+
+void SysTick_Handler(void)
+{
+  HAL_IncTick();
 }
 
 void Error_Handler(void)
