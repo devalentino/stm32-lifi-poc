@@ -87,10 +87,10 @@ void on_package_received(LiFi_Socket_t *socket) {
     }
 
     for (uint8_t i = 0; i < payload_length; i++) {
-        (*socket->rx_buffer) = socket->rx_package[i + 3];
+        (*socket->rx_buffer++) = socket->rx_package[i + 3];
     }
 
-    LiFi_Socket_Read(socket, socket->rx_buffer);
+    // TODO: tmplement ACK/NAK
 }
 
 static void on_byte_received(void *context) {

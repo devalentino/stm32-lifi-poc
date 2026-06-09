@@ -4,6 +4,7 @@
 Debug/
 Release/
 build/
+build-test/
 bin/
 obj/
 
