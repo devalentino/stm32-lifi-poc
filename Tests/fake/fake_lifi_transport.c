@@ -54,6 +54,15 @@ void LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t *transmitter, const uint
             link->receiver->on_byte_received(link->receiver->on_byte_received_callback_context);
         }
     }
+
+    if (link->transmitter->on_buffer_transmitted != NULL && link->transmitter->on_buffer_transmitted_callback_context != NULL) {
+        link->transmitter->on_buffer_transmitted(link->transmitter->on_buffer_transmitted_callback_context);
+    }
+}
+
+void LiFi_Transmitter_ToConfirmationMode(LiFi_Transmitter_t *transmitter)
+{
+    
 }
 
 void LiFi_Receiver_ReadBuffer(LiFi_Receiver_t *receiver)

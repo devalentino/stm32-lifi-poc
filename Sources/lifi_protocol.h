@@ -16,6 +16,7 @@ typedef struct {
     uint8_t             tx_bytes_processed;
     uint8_t             tx_package[LIFI_TX_BUFFER_SIZE];
     uint8_t             tx_package_id;
+    uint8_t             tx_retries_count;
     bool                is_tx_confirmation_required;
 
     uint8_t            *rx_buffer;

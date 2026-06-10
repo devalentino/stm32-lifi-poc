@@ -32,4 +32,8 @@ void LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t *transmitter, const uint
 
 void LiFi_Transmitter_TimerCallback(LiFi_Transmitter_t *transmitter);
 
+void LiFi_Transmitter_ToTransmitMode(LiFi_Transmitter_t *transmitter);
+
+void LiFi_Transmitter_ToConfirmationMode(LiFi_Transmitter_t *transmitter);
+
 #endif

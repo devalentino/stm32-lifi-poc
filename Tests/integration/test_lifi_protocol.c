@@ -36,11 +36,30 @@ void test_socket_can_send_and_receive_payload_through_loopback(void)
     TEST_ASSERT_EQUAL_UINT8('i', read_buffer[1]);
 }
 
+void test_transmitter_is_waiting_for_ack_after_package_transmit(void)
+{
+    LiFi_Transmitter_t client_transmitter = {0};
+    LiFi_Receiver_t client_receiver = {0};
+    LiFi_Socket_t client_socket = {0};
+
+    LiFi_Receiver_t server_receiver = {0};
+
+    LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver);
+    Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
+
+    uint8_t client_payload[] = {'H', 'i'};
+
+    LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload));
+
+    TEST_ASSERT(client_transmitter.is_busy);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
 
     RUN_TEST(test_socket_can_send_and_receive_payload_through_loopback);
+    RUN_TEST(test_transmitter_is_waiting_for_ack_after_package_transmit);
 
     return UNITY_END();
 }
