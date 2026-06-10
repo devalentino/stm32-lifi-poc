@@ -1,0 +1,6 @@
+[submodule "External/unity"]
+	path = External/unity
+	url = https://github.com/ThrowTheSwitch/Unity.git
+[submodule "External/fff"]
+	path = External/fff
+	url = https://github.com/meekrosoft/fff.git

@@ -12,6 +12,30 @@
 #############################################################################################################################
 cmake_minimum_required(VERSION 3.20)
 
+option(LIFI_BUILD_TESTS "Build host-side unit tests" OFF)
+
+  if(LIFI_BUILD_TESTS)
+    project(lifi_tests C)
+    enable_testing()
+
+    add_executable(test_integration
+      Tests/integration/test_lifi_protocol.c
+      Tests/fake/fake_lifi_transport.c
+      Sources/lifi_protocol.c
+      External/unity/src/unity.c
+    )
+
+    target_include_directories(test_integration PRIVATE
+      Tests/fake
+      Sources
+      External/unity/src
+      External/fff
+    )
+
+    add_test(NAME test_integration COMMAND test_integration)
+    return()
+  endif()
+
 ###################### CONSTANTS ######################################
 set (PROJECT_TYPE_EXECUTABLE          "exe")
 set (PROJECT_TYPE_STATIC_LIBRARY      "static-lib")
