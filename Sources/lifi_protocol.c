@@ -1,10 +1,13 @@
 #include "lifi_protocol.h"
 #include "lifi_transmitter.h"
 #include "lifi_receiver.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
 #define PREAMBULE 0x55;
+#define ACK       0x56;
+#define NAK.      0x57;
 
 static uint8_t PACKAGE_ID = 0;
 
@@ -54,9 +57,27 @@ static void wrap_to_lifi_protocol_package(uint8_t *dest_buffer, uint8_t *source_
     dest_buffer[index] = calculate_crc(source_buffer, length);
 }
 
+static void process_package_confirmation(LiFi_Socket_t socket)
+{
+    uint8_t package_id = socket->rx_package[1];
+    if (socket->rx_package_id != package_id) {
+        // confirmation for wrong package
+    }
+
+    uint8_t crc = socket->rx_package[socket->rx_package_bytes_received - 1];
+    uint8_t payload_length = socket->rx_package[2];
+    if (crc != calculate_crc(socket->rx_package + 3, payload_length)) {
+        // corrupted confirmation package
+    }
+
+    
+}
+
 static void on_buffer_transmitted(void *context)
 {
     LiFi_Socket_t *socket = (LiFi_Socket_t *)context;
+
+    if (socket->is_tx_confirmation_required) return;
 
     if (socket->tx_bytes_processed < socket->tx_buffer_length) {
         uint8_t payload_length = socket->tx_buffer_length - socket->tx_bytes_processed;
@@ -67,30 +88,37 @@ static void on_buffer_transmitted(void *context)
         uint8_t package_length = payload_length + 4;
         LiFi_Transmitter_TransmitBuffer(socket->transmitter, socket->tx_package, package_length);
         socket->tx_bytes_processed += payload_length;
+    } else {
+        socket->is_tx_confirmation_required = true;
     }
 }
 
 void on_package_received(LiFi_Socket_t *socket) {
+    if (socket->is_tx_confirmation_required) {
+        // TODO: ensure ACK/NAK received
+    }
+
+    // process regular consumption
     uint8_t package_id = socket->rx_package[1];
     if (socket->rx_package_id == 0) {
         socket->rx_package_id = package_id;
     }
 
     if (socket->rx_package_id != package_id) {
-        return;
+        LiFi_Socket_Nak(LiFi_Socket_t *socket);
     }
 
     uint8_t crc = socket->rx_package[socket->rx_package_bytes_received - 1];
     uint8_t payload_length = socket->rx_package[2];
     if (crc != calculate_crc(socket->rx_package + 3, payload_length)) {
-        return;
+        LiFi_Socket_Nak(LiFi_Socket_t *socket);
     }
 
     for (uint8_t i = 0; i < payload_length; i++) {
         (*socket->rx_buffer++) = socket->rx_package[i + 3];
     }
 
-    // TODO: tmplement ACK/NAK
+    LiFi_Socket_Ack(LiFi_Socket_t *socket);
 }
 
 static void on_byte_received(void *context) {
@@ -119,6 +147,9 @@ static void on_byte_received(void *context) {
 
 void LiFi_Socket_Init(LiFi_Socket_t *socket, LiFi_Transmitter_t *transmitter, LiFi_Receiver_t *receiver)
 {
+    socket->is_busy = false;
+    socket->is_tx_confirmation_required = false;
+
     socket->transmitter = transmitter;
     socket->transmitter->on_buffer_transmitted = on_buffer_transmitted;
     socket->transmitter->on_buffer_transmitted_callback_context = socket;
@@ -130,8 +161,9 @@ void LiFi_Socket_Init(LiFi_Socket_t *socket, LiFi_Transmitter_t *transmitter, Li
 
 void LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length)
 {
-    if (socket->transmitter->is_busy) return;
+    if (socket->is_busy) return;
 
+    socket->is_busy = true;
     socket->tx_buffer = buffer;
     socket->tx_buffer_length = length;
     socket->tx_bytes_processed = 0;
@@ -156,4 +188,14 @@ void LiFi_Socket_Read(LiFi_Socket_t *socket, uint8_t *buffer)
     socket->rx_package_id = 0;
 
     LiFi_Receiver_ReadBuffer(socket->receiver);
+}
+
+void LiFi_Socket_Ack(LiFi_Socket_t *socket)
+{
+  // TODO: implement ACK
+}
+
+void LiFi_Socket_Nak(LiFi_Socket_t *socket)
+{
+  // TODO: implement NAK
 }
