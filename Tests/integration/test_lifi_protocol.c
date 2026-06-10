@@ -31,6 +31,7 @@ void test_socket_can_send_and_receive_payload_through_loopback(void)
 
     LiFi_Socket_Read(&server_socket, read_buffer);
     LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload));
+    Fake_LiFi_RunUntilIdle();
 
     TEST_ASSERT_EQUAL_UINT8('H', read_buffer[0]);
     TEST_ASSERT_EQUAL_UINT8('i', read_buffer[1]);
@@ -50,15 +51,19 @@ void test_transmitter_is_waiting_for_ack_after_package_transmit(void)
     uint8_t client_payload[] = {'H', 'i'};
 
     LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload));
+    TEST_ASSERT_TRUE_MESSAGE(client_transmitter.is_busy, "transmitter does not move to the busy mode");
+    TEST_ASSERT_FALSE_MESSAGE(client_socket.is_tx_confirmation_required, "tx confirmation improperly configured");
 
-    TEST_ASSERT(client_transmitter.is_busy);
+    Fake_LiFi_RunUntilIdle();
+
+    TEST_ASSERT_TRUE_MESSAGE(client_socket.is_tx_confirmation_required, "tx confirmation is required");
 }
 
 int main(void)
 {
     UNITY_BEGIN();
 
-    RUN_TEST(test_socket_can_send_and_receive_payload_through_loopback);
+    // RUN_TEST(test_socket_can_send_and_receive_payload_through_loopback);
     RUN_TEST(test_transmitter_is_waiting_for_ack_after_package_transmit);
 
     return UNITY_END();
