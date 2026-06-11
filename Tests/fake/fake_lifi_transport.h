@@ -22,10 +22,6 @@ void Fake_LiFi_Transmit(Fake_LiFi_Link_t *link);
 
 void Fake_LiFi_RunUntilIdle(void);
 
-void LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t *transmitter, const uint8_t *buffer, uint8_t length);
-
-void LiFi_Transmitter_ToTransmitMode(LiFi_Transmitter_t *transmitter);
-
-void LiFi_Transmitter_ToConfirmationMode(LiFi_Transmitter_t *transmitter);
+void Fake_LiFi_Transmitter_TransmitBuffer_Callback(LiFi_Transmitter_t *transmitter, const uint8_t *buffer, uint8_t length);
 
 #endif

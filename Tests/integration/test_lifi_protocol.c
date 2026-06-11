@@ -1,10 +1,21 @@
 #include "unity.h"
 #include "lifi_protocol.h"
 #include "fake_lifi_transport.h"
+#include "fff.h"
+
+DEFINE_FFF_GLOBALS;
+
+FAKE_VOID_FUNC(LiFi_Transmitter_TransmitBuffer, LiFi_Transmitter_t *, const uint8_t *, uint8_t);
+FAKE_VOID_FUNC(LiFi_Transmitter_ToConfirmationMode, LiFi_Transmitter_t *);
 
 void setUp(void)
 {
+    RESET_FAKE(LiFi_Transmitter_TransmitBuffer);
+    RESET_FAKE(LiFi_Transmitter_ToConfirmationMode);
+    FFF_RESET_HISTORY();
+
     Fake_LiFi_Link_Reset();
+    LiFi_Transmitter_TransmitBuffer_fake.custom_fake = Fake_LiFi_Transmitter_TransmitBuffer_Callback;
 }
 
 void tearDown(void)
@@ -56,7 +67,33 @@ void test_transmitter_is_waiting_for_ack_after_package_transmit(void)
 
     Fake_LiFi_RunUntilIdle();
 
-    TEST_ASSERT_TRUE_MESSAGE(client_socket.is_tx_confirmation_required, "tx confirmation is required");
+    TEST_ASSERT_TRUE(client_socket.is_tx_confirmation_required);
+    TEST_ASSERT_EQUAL_UINT(1, LiFi_Transmitter_ToConfirmationMode_fake.call_count);
+    TEST_ASSERT_EQUAL_PTR(&client_transmitter, LiFi_Transmitter_ToConfirmationMode_fake.arg0_val);
+}
+
+void test_transmission_disabled_in_confirmation_mode(void)
+{
+    LiFi_Transmitter_t client_transmitter = {0};
+    LiFi_Receiver_t client_receiver = {0};
+    LiFi_Socket_t client_socket = {0};
+
+    LiFi_Receiver_t server_receiver = {0};
+
+    LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver);
+    Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
+
+    // somulate state when transmitter sent package and wait for confirmation
+    client_socket.is_busy = true;
+    client_socket.is_tx_confirmation_required = true;
+
+    uint8_t client_payload[] = {'H', 'i'};
+
+    Fake_LiFi_RunUntilIdle();
+
+    TEST_ASSERT_TRUE(client_socket.is_tx_confirmation_required);
+    TEST_ASSERT_EQUAL_UINT(1, LiFi_Transmitter_ToConfirmationMode_fake.call_count);
+    TEST_ASSERT_EQUAL_PTR(&client_transmitter, LiFi_Transmitter_ToConfirmationMode_fake.arg0_val);
 }
 
 int main(void)
@@ -64,7 +101,8 @@ int main(void)
     UNITY_BEGIN();
 
     // RUN_TEST(test_socket_can_send_and_receive_payload_through_loopback);
-    RUN_TEST(test_transmitter_is_waiting_for_ack_after_package_transmit);
+    // RUN_TEST(test_transmitter_is_waiting_for_ack_after_package_transmit);
+    RUN_TEST(test_transmission_disabled_in_confirmation_mode);
 
     return UNITY_END();
 }

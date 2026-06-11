@@ -73,7 +73,7 @@ void Fake_LiFi_RunUntilIdle(void)
     }
 }
 
-void LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t *transmitter, const uint8_t *buffer, uint8_t length) 
+void Fake_LiFi_Transmitter_TransmitBuffer_Callback(LiFi_Transmitter_t *transmitter, const uint8_t *buffer, uint8_t length)
 {
     Fake_LiFi_Link_t *link = find_link_by_transmitter(transmitter);
 
@@ -87,16 +87,6 @@ void LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t *transmitter, const uint
     link->pending_index = 1; // skip preambule, matching physical receiver behavior
     link->has_pending_tx = true;
     transmitter->is_busy = true;
-}
-
-void LiFi_Transmitter_ToTransmitMode(LiFi_Transmitter_t *transmitter)
-{
-    (void)transmitter;
-}
-
-void LiFi_Transmitter_ToConfirmationMode(LiFi_Transmitter_t *transmitter)
-{
-    // TODO: change timer prescaler
 }
 
 void LiFi_Receiver_ReadBuffer(LiFi_Receiver_t *receiver)
