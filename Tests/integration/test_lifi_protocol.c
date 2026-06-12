@@ -2,6 +2,7 @@
 #include "lifi_protocol.h"
 #include "fake_lifi_transport.h"
 #include "fff.h"
+#include <stdint.h>
 
 DEFINE_FFF_GLOBALS;
 
@@ -83,17 +84,63 @@ void test_transmission_disabled_in_confirmation_mode(void)
     LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver);
     Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
 
-    // somulate state when transmitter sent package and wait for confirmation
-    client_socket.is_busy = true;
-    client_socket.is_tx_confirmation_required = true;
+    uint8_t client_payload[] = {'L', 'o', 'r', 'e', 'm', ' ', 'i', 'p', 's', 'u', 'm', ' ', 'd', 'o', 'l', 'o', 'r', ' ', 's', 'i', 't', ' ', 'a', 'm', 'e', 't', ',', ' ', 'c', 'o', 'n', 's', 'e', 'c', 't', 'e', 't', 'u', 'r', ' ', 'a', 'd', 'i', 'p', 'i', 's', 'c', 'i', 'n', 'g', ' ', 'e', 'l', 'i', 't', ',', ' ', 's', 'e', 'd', ' ', 'd', 'o', ' ', 'e', 'i', 'u', 's', 'm', 'o', 'd', ' ', 't', 'e', 'm', 'p', 'o', 'r', ' ', 'i', 'n', 'c', 'i', 'd', 'i', 'd', 'u', 'n', 't', ' ', 'u', 't'};
 
-    uint8_t client_payload[] = {'H', 'i'};
+    LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload));
 
     Fake_LiFi_RunUntilIdle();
 
     TEST_ASSERT_TRUE(client_socket.is_tx_confirmation_required);
     TEST_ASSERT_EQUAL_UINT(1, LiFi_Transmitter_ToConfirmationMode_fake.call_count);
     TEST_ASSERT_EQUAL_PTR(&client_transmitter, LiFi_Transmitter_ToConfirmationMode_fake.arg0_val);
+
+    // socket waits for confirmation and does not transmit
+    Fake_LiFi_RunUntilIdle();
+
+    TEST_ASSERT_TRUE(client_socket.is_tx_confirmation_required);
+    TEST_ASSERT_EQUAL_UINT(1, LiFi_Transmitter_ToConfirmationMode_fake.call_count);
+    TEST_ASSERT_EQUAL_PTR(&client_transmitter, LiFi_Transmitter_ToConfirmationMode_fake.arg0_val);
+}
+
+void test_socket_coontinue_transmission_after_confirmation(void)
+{
+    LiFi_Transmitter_t client_transmitter = {0};
+    LiFi_Receiver_t client_receiver = {0};
+    LiFi_Socket_t client_socket = {0};
+
+    LiFi_Transmitter_t server_transmitter = {0};
+    LiFi_Receiver_t server_receiver = {0};
+    LiFi_Socket_t server_socket = {0};
+
+    LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver);
+    LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver);
+    Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
+    Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
+
+    uint8_t client_payload[] = {'L', 'o', 'r', 'e', 'm', ' ', 'i', 'p', 's', 'u', 'm', ' ', 'd', 'o', 'l', 'o', 'r', ' ', 's', 'i', 't', ' ', 'a', 'm', 'e', 't', ',', ' ', 'c', 'o', 'n', 's', 'e', 'c', 't', 'e', 't', 'u', 'r', ' ', 'a', 'd', 'i', 'p', 'i', 's', 'c', 'i', 'n', 'g', ' ', 'e', 'l', 'i', 't', ',', ' ', 's', 'e', 'd', ' ', 'd', 'o', ' ', 'e', 'i', 'u', 's', 'm', 'o', 'd', ' ', 't', 'e', 'm', 'p', 'o', 'r', ' ', 'i', 'n', 'c', 'i', 'd', 'i', 'd', 'u', 'n', 't', ' ', 'u', 't'};
+    uint8_t server_buffer[sizeof(client_payload)] = {0};
+
+    LiFi_Socket_Read(&server_socket, server_buffer);
+    LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload));
+
+    Fake_LiFi_RunUntilIdle();
+
+    // client socket sent payload and switched to the confirmation mode
+    TEST_ASSERT_TRUE(client_socket.is_tx_confirmation_required);
+    TEST_ASSERT_EQUAL_UINT(1, LiFi_Transmitter_ToConfirmationMode_fake.call_count);
+    TEST_ASSERT_EQUAL_PTR(&client_transmitter, LiFi_Transmitter_ToConfirmationMode_fake.arg0_val);
+
+    // server socket is prepared ACK payload, 1 symbol
+    TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[3], 1);
+    TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[4], ACK);
+
+    Fake_LiFi_RunUntilIdle();
+
+    // client socket received ACK and prepared next package to send
+    TEST_ASSERT_FALSE(client_socket.is_tx_confirmation_required);
+    TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[2], 1);
+    TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[3], ACK);
+    TEST_ASSERT_EQUAL_MEMORY(&client_transmitter.tx_buffer[4], &client_payload[35], 35);
 }
 
 int main(void)
@@ -102,7 +149,8 @@ int main(void)
 
     // RUN_TEST(test_socket_can_send_and_receive_payload_through_loopback);
     // RUN_TEST(test_transmitter_is_waiting_for_ack_after_package_transmit);
-    RUN_TEST(test_transmission_disabled_in_confirmation_mode);
+    // RUN_TEST(test_transmission_disabled_in_confirmation_mode);
+    RUN_TEST(test_socket_coontinue_transmission_after_confirmation);
 
     return UNITY_END();
 }

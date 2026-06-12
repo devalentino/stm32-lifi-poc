@@ -8,10 +8,6 @@
 typedef struct {
     LiFi_Transmitter_t *transmitter;
     LiFi_Receiver_t *receiver;
-    uint8_t pending_buffer[LIFI_TX_BUFFER_SIZE];
-    uint8_t pending_length;
-    uint8_t pending_index;
-    bool has_pending_tx;
 } Fake_LiFi_Link_t;
 
 void Fake_LiFi_Link_Reset();

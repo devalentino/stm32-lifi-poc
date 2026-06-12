@@ -5,6 +5,11 @@
 #include "lifi_transmitter.h"
 #include <stdint.h>
 
+#define PREAMBULE                  0x55
+#define ACK                        0x56
+#define NAK                        0x57
+#define MAX_TRANSMIT_RETRIES_COUNT 0x5
+
 typedef struct {
     LiFi_Transmitter_t  *transmitter;
     LiFi_Receiver_t     *receiver;
@@ -31,8 +36,8 @@ void LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length);
 
 void LiFi_Socket_Read(LiFi_Socket_t *socket, uint8_t *buffer);
 
-void LiFi_Socket_Ack(LiFi_Socket_t *socket);
+void LiFi_Socket_Ack(LiFi_Socket_t *socket, uint8_t package_id);
 
-void LiFi_Socket_Nak(LiFi_Socket_t *socket);
+void LiFi_Socket_Nak(LiFi_Socket_t *socket, uint8_t package_id);
 
 #endif
