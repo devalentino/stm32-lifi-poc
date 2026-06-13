@@ -16,9 +16,9 @@ jobs:
 
       - name: Install clang-format
         run: |
-          wget -O - https://apt.llvm.org/llvm.sh | sudo bash -s -- 22
-          sudo apt-get install -y clang-format-22
-          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-22 100
+          python3 -m pip install --user clang-format==22.1.7
+          sudo ln -sf "$HOME/.local/bin/clang-format" /usr/local/bin/clang-format
+          clang-format --version
 
       - name: Check formatting
         run: make format-check
