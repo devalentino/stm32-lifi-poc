@@ -1,3 +1,5 @@
+#include "stm32f4xx_hal.h"
+#include "lifi_const.h"
 #include "lifi_transmitter.h"
 #include <stdint.h>
 
@@ -23,6 +25,18 @@ static void byte_to_manchester(uint8_t *manchester_buffer, uint8_t payload)
     }
 }
 
+void LiFi_Transmitter_ToTransmitMode(LiFi_Transmitter_t *transmitter) 
+{
+    __HAL_TIM_SET_PRESCALER(transmitter->htim, LIFI_TRANSMIT_TIMER_PRESCALER);
+    transmitter->htim->Instance->EGR = TIM_EGR_UG;
+}
+
+void LiFi_Transmitter_ToConfirmationMode(LiFi_Transmitter_t *transmitter)
+{
+    __HAL_TIM_SET_PRESCALER(transmitter->htim, LIFI_TRANSMIT_CONFIRM_TIMER_PRESCALER);
+    transmitter->htim->Instance->EGR = TIM_EGR_UG;
+}
+
 void LiFi_Transmitter_Init(LiFi_Transmitter_t *transmitter, TIM_HandleTypeDef *htim, GPIO_TypeDef *port, uint16_t pin)
 {
     transmitter->htim = htim;
@@ -40,6 +54,7 @@ void LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t *transmitter, const uint
     if (length > LIFI_TX_BUFFER_SIZE || length == 0) return;
 
     transmitter->is_busy = true;
+    LiFi_Transmitter_ToTransmitMode(transmitter);
     
     transmitter->tx_total_bytes = length;
     transmitter->current_tx_byte_index = 0;

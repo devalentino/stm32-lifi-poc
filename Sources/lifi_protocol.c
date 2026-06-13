@@ -1,10 +1,9 @@
 #include "lifi_protocol.h"
 #include "lifi_transmitter.h"
 #include "lifi_receiver.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-
-#define PREAMBULE 0x55;
 
 static uint8_t PACKAGE_ID = 0;
 
@@ -33,16 +32,13 @@ static uint8_t calculate_crc(uint8_t *buffer, uint8_t length)
     return crc;
 }
 
-static void wrap_to_lifi_protocol_package(uint8_t *dest_buffer, uint8_t *source_buffer, uint8_t length, uint8_t id, bool preambule)
+static void wrap_to_lifi_protocol_package(uint8_t *dest_buffer, uint8_t *source_buffer, uint8_t length, uint8_t id)
 {
     uint8_t index = 0;
-    if (preambule) {
-        dest_buffer[index++] = PREAMBULE;
-    }
 
+    // protocol package is: [ preambule | start byte | package id | package length | payload | CRC ]
 
-    // protocol package is: [ start byte | package id | package length | payload | CRC ]
-
+    dest_buffer[index++] = PREAMBULE;
     dest_buffer[index++] = START_BYTE;
     dest_buffer[index++] = id;
     dest_buffer[index++] = length;
@@ -54,43 +50,131 @@ static void wrap_to_lifi_protocol_package(uint8_t *dest_buffer, uint8_t *source_
     dest_buffer[index] = calculate_crc(source_buffer, length);
 }
 
-static void on_buffer_transmitted(void *context)
+static void reset_socket(LiFi_Socket_t *socket)
 {
-    LiFi_Socket_t *socket = (LiFi_Socket_t *)context;
+    socket->tx_buffer = NULL;
+    socket->tx_buffer_length = 0;
+    socket->tx_bytes_processed = 0;
+    socket->tx_package_id = 0;
+    socket->tx_retries_count = 0;
+    socket->is_tx_confirmation_required = false;
 
-    if (socket->tx_bytes_processed < socket->tx_buffer_length) {
-        uint8_t payload_length = socket->tx_buffer_length - socket->tx_bytes_processed;
-        if (socket->tx_buffer_length > LIFI_TX_BUFFER_SIZE - 4) {
-            payload_length = LIFI_TX_BUFFER_SIZE - 4;
-        }
-        wrap_to_lifi_protocol_package(socket->tx_package, socket->tx_buffer, payload_length, socket->tx_package_id, false);
-        uint8_t package_length = payload_length + 4;
-        LiFi_Transmitter_TransmitBuffer(socket->transmitter, socket->tx_package, package_length);
-        socket->tx_bytes_processed += payload_length;
-    }
+    socket->rx_buffer = NULL;
+    socket->rx_package_id = 0;
+    socket->rx_package_bytes_received = 0;
+
+    socket->transmitter->is_busy = false;
+    socket->is_busy = false;
 }
 
-void on_package_received(LiFi_Socket_t *socket) {
+static void setup_transmission(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length, uint8_t package_id)
+{
+    socket->tx_buffer = buffer;
+    socket->tx_buffer_length = length;
+    socket->tx_bytes_processed = 0;
+    socket->tx_retries_count = 0;
+    socket->is_tx_confirmation_required = false;
+    socket->tx_package_id = package_id;
+}
+
+static void transmit_package(LiFi_Socket_t *socket)
+{
+    uint8_t payload_length = socket->tx_buffer_length - socket->tx_bytes_processed;
+    if (socket->tx_buffer_length > LIFI_TX_BUFFER_SIZE - 5) {
+        payload_length = LIFI_TX_BUFFER_SIZE - 5;
+    }
+    wrap_to_lifi_protocol_package(
+        socket->tx_package, 
+        socket->tx_buffer + socket->tx_bytes_processed, 
+        payload_length, socket->tx_package_id
+    );
+
+    uint8_t package_length = payload_length + 5;
+    LiFi_Transmitter_TransmitBuffer(socket->transmitter, socket->tx_package, package_length);
+}
+
+static void process_received_package(LiFi_Socket_t *socket)
+{
     uint8_t package_id = socket->rx_package[1];
     if (socket->rx_package_id == 0) {
         socket->rx_package_id = package_id;
     }
 
     if (socket->rx_package_id != package_id) {
+        LiFi_Socket_Nak(socket, package_id);
         return;
     }
 
     uint8_t crc = socket->rx_package[socket->rx_package_bytes_received - 1];
     uint8_t payload_length = socket->rx_package[2];
     if (crc != calculate_crc(socket->rx_package + 3, payload_length)) {
+        LiFi_Socket_Nak(socket, package_id);
         return;
     }
 
-    for (uint8_t i = 0; i < payload_length; i++) {
-        (*socket->rx_buffer++) = socket->rx_package[i + 3];
+    memcpy(socket->rx_buffer, socket->rx_package + 3, payload_length);
+
+    LiFi_Socket_Ack(socket, package_id);
+}
+
+static bool is_received_received_package_confirmed(LiFi_Socket_t *socket)
+{
+    uint8_t package_id = socket->rx_package[1];
+
+    if (socket->tx_package_id != package_id) {
+        return false;
     }
 
-    // TODO: tmplement ACK/NAK
+    uint8_t crc = socket->rx_package[socket->rx_package_bytes_received - 1];
+    uint8_t payload_length = socket->rx_package[2];
+
+    if (payload_length != 1) {
+        return false;
+    }
+
+    if (crc != calculate_crc(socket->rx_package + 3, payload_length)) {
+        return false;
+    }
+
+    uint8_t payload = socket->rx_package[3];
+    return payload == ACK;
+}
+
+static void on_buffer_transmitted(void *context)
+{
+    LiFi_Socket_t *socket = (LiFi_Socket_t *)context;
+
+    if (socket->rx_buffer == NULL) {
+        // receiver is empty, means payload had been sent
+        socket->is_tx_confirmation_required = true;
+        LiFi_Transmitter_ToConfirmationMode(socket->transmitter);
+    } else {
+        // confirmation had been sent
+    }
+}
+
+void on_package_received(LiFi_Socket_t *socket) {
+    if (socket->is_tx_confirmation_required) {
+        if (is_received_received_package_confirmed(socket)) {
+            uint8_t payload_length = socket->tx_package[3];
+            socket->tx_bytes_processed += payload_length;
+            if (socket->tx_bytes_processed < socket->tx_buffer_length){
+                socket->is_tx_confirmation_required = false;
+                transmit_package(socket);
+                return;
+            }
+        }
+
+        socket->tx_retries_count++;
+        if (socket->tx_retries_count <= MAX_TRANSMIT_RETRIES_COUNT) {
+            transmit_package(socket);
+            return;
+        }
+
+        reset_socket(socket);
+    } else {
+        process_received_package(socket);
+    }
 }
 
 static void on_byte_received(void *context) {
@@ -119,6 +203,9 @@ static void on_byte_received(void *context) {
 
 void LiFi_Socket_Init(LiFi_Socket_t *socket, LiFi_Transmitter_t *transmitter, LiFi_Receiver_t *receiver)
 {
+    socket->is_busy = false;
+    socket->is_tx_confirmation_required = false;
+
     socket->transmitter = transmitter;
     socket->transmitter->on_buffer_transmitted = on_buffer_transmitted;
     socket->transmitter->on_buffer_transmitted_callback_context = socket;
@@ -130,22 +217,11 @@ void LiFi_Socket_Init(LiFi_Socket_t *socket, LiFi_Transmitter_t *transmitter, Li
 
 void LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length)
 {
-    if (socket->transmitter->is_busy) return;
+    if (socket->is_busy) return;
 
-    socket->tx_buffer = buffer;
-    socket->tx_buffer_length = length;
-    socket->tx_bytes_processed = 0;
-    socket->tx_package_id = get_package_id();
-
-    uint8_t payload_length = socket->tx_buffer_length;
-    if (socket->tx_buffer_length > LIFI_TX_BUFFER_SIZE - 5) {
-        payload_length = LIFI_TX_BUFFER_SIZE - 5;
-    }
-    wrap_to_lifi_protocol_package(socket->tx_package, socket->tx_buffer, payload_length, socket->tx_package_id, true);
-
-    uint8_t package_length = payload_length + 5;
-    LiFi_Transmitter_TransmitBuffer(socket->transmitter, socket->tx_package, package_length);
-    socket->tx_bytes_processed += payload_length;
+    socket->is_busy = true;
+    setup_transmission(socket, buffer, length, get_package_id());
+    transmit_package(socket);
 }
 
 void LiFi_Socket_Read(LiFi_Socket_t *socket, uint8_t *buffer)
@@ -156,4 +232,18 @@ void LiFi_Socket_Read(LiFi_Socket_t *socket, uint8_t *buffer)
     socket->rx_package_id = 0;
 
     LiFi_Receiver_ReadBuffer(socket->receiver);
+}
+
+void LiFi_Socket_Ack(LiFi_Socket_t *socket, uint8_t package_id)
+{
+    uint8_t ack[] = {ACK};
+    setup_transmission(socket, ack, 1, package_id);
+    transmit_package(socket);
+}
+
+void LiFi_Socket_Nak(LiFi_Socket_t *socket, uint8_t package_id)
+{
+    uint8_t nak[] = {NAK};
+    setup_transmission(socket, nak, 1, package_id);
+    transmit_package(socket);
 }
