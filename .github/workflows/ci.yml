@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install clang-format
+        run: |
+          python3 -m pip install --user clang-format==22.1.5
+          sudo ln -sf "$HOME/.local/bin/clang-format" /usr/local/bin/clang-format
+          clang-format --version
+
+      - name: Check formatting
+        run: make format-check
+
+  test:
+    name: Build and run tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build
+
+      - name: Build and run Unity tests
+        run: make test
