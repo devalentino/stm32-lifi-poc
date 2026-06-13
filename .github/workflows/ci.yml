@@ -16,7 +16,7 @@ jobs:
 
       - name: Install clang-format
         run: |
-          python3 -m pip install --user clang-format==22.1.7
+          python3 -m pip install --user clang-format==22.1.5
           sudo ln -sf "$HOME/.local/bin/clang-format" /usr/local/bin/clang-format
           clang-format --version
 
