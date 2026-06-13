@@ -112,8 +112,8 @@ void test_transmit_payload__receiver_ignores_package_on_wrong_start_byte(void) {
   client_transmitter.tx_buffer[1] = 0;
   Fake_LiFi_RunUntilIdle();
 
-  TEST_ASSERT_EQUAL_UINT8('0', read_buffer[0]);
-  TEST_ASSERT_EQUAL_UINT8('0', read_buffer[1]);
+  TEST_ASSERT_EQUAL_UINT8(0, read_buffer[0]);
+  TEST_ASSERT_EQUAL_UINT8(0, read_buffer[1]);
 }
 
 void test_socket_continue_transmission_after_confirmation(void) {

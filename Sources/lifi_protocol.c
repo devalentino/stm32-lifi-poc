@@ -100,6 +100,7 @@ static void process_received_package(LiFi_Socket_t* socket) {
   }
 
   if (socket->rx_package_id != package_id) {
+    socket->rx_package_bytes_received = 0;
     LiFi_Socket_Nak(socket, package_id);
     return;
   }
@@ -107,6 +108,7 @@ static void process_received_package(LiFi_Socket_t* socket) {
   uint8_t crc = socket->rx_package[socket->rx_package_bytes_received - 1];
   uint8_t payload_length = socket->rx_package[2];
   if (crc != calculate_crc(socket->rx_package + 3, payload_length)) {
+    socket->rx_package_bytes_received = 0;
     LiFi_Socket_Nak(socket, package_id);
     return;
   }
@@ -162,7 +164,9 @@ void on_package_received(LiFi_Socket_t* socket) {
       }
     }
 
+    socket->is_tx_confirmation_required = false;
     socket->tx_retries_count++;
+
     if (socket->tx_retries_count <= MAX_TRANSMIT_RETRIES_COUNT) {
       transmit_package(socket);
       return;
