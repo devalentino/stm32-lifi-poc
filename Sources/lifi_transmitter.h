@@ -9,11 +9,11 @@
 #define LIFI_TX_BUFFER_SIZE 40
 
 typedef void (*LiFi_Transmitter_BufferTransmittedCallback)(
-    void* on_buffer_transmitted_callback_context);
+    void *on_buffer_transmitted_callback_context);
 
 typedef struct {
-  TIM_HandleTypeDef* htim;
-  GPIO_TypeDef* gpio_port;
+  TIM_HandleTypeDef *htim;
+  GPIO_TypeDef *gpio_port;
   uint16_t gpio_pin;
 
   uint8_t tx_buffer[LIFI_TX_BUFFER_SIZE];
@@ -25,20 +25,19 @@ typedef struct {
   volatile bool is_busy;
 
   LiFi_Transmitter_BufferTransmittedCallback on_buffer_transmitted;
-  void* on_buffer_transmitted_callback_context;
+  void *on_buffer_transmitted_callback_context;
 } LiFi_Transmitter_t;
 
-void LiFi_Transmitter_Init(LiFi_Transmitter_t* transmitter,
-                           TIM_HandleTypeDef* htim, GPIO_TypeDef* port,
-                           uint16_t pin);
+void LiFi_Transmitter_Init(LiFi_Transmitter_t *transmitter, TIM_HandleTypeDef *htim,
+                           GPIO_TypeDef *port, uint16_t pin);
 
-void LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t* transmitter,
-                                     const uint8_t* buffer, uint8_t length);
+void LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t *transmitter, const uint8_t *buffer,
+                                     uint8_t length);
 
-void LiFi_Transmitter_TimerCallback(LiFi_Transmitter_t* transmitter);
+void LiFi_Transmitter_TimerCallback(LiFi_Transmitter_t *transmitter);
 
-void LiFi_Transmitter_ToTransmitMode(LiFi_Transmitter_t* transmitter);
+void LiFi_Transmitter_ToTransmitMode(LiFi_Transmitter_t *transmitter);
 
-void LiFi_Transmitter_ToConfirmationMode(LiFi_Transmitter_t* transmitter);
+void LiFi_Transmitter_ToConfirmationMode(LiFi_Transmitter_t *transmitter);
 
 #endif

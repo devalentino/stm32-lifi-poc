@@ -7,9 +7,8 @@
 
 DEFINE_FFF_GLOBALS;
 
-FAKE_VOID_FUNC(LiFi_Transmitter_TransmitBuffer, LiFi_Transmitter_t*,
-               const uint8_t*, uint8_t);
-FAKE_VOID_FUNC(LiFi_Transmitter_ToConfirmationMode, LiFi_Transmitter_t*);
+FAKE_VOID_FUNC(LiFi_Transmitter_TransmitBuffer, LiFi_Transmitter_t *, const uint8_t *, uint8_t);
+FAKE_VOID_FUNC(LiFi_Transmitter_ToConfirmationMode, LiFi_Transmitter_t *);
 
 void setUp(void) {
   RESET_FAKE(LiFi_Transmitter_TransmitBuffer);
@@ -17,11 +16,11 @@ void setUp(void) {
   FFF_RESET_HISTORY();
 
   Fake_LiFi_Link_Reset();
-  LiFi_Transmitter_TransmitBuffer_fake.custom_fake =
-      Fake_LiFi_Transmitter_TransmitBuffer_Callback;
+  LiFi_Transmitter_TransmitBuffer_fake.custom_fake = Fake_LiFi_Transmitter_TransmitBuffer_Callback;
 }
 
-void tearDown(void) {}
+void tearDown(void) {
+}
 
 void test_transmit_payload(void) {
   LiFi_Transmitter_t client_transmitter = {0};
@@ -84,8 +83,7 @@ void test_transmit_payload__wrong_crc(void) {
   TEST_ASSERT_FALSE(client_socket.is_tx_confirmation_required);
   TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[2], 1);
   TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[3], NAK);
-  TEST_ASSERT_EQUAL_MEMORY(&client_transmitter.tx_buffer[4], &client_payload,
-                           2);
+  TEST_ASSERT_EQUAL_MEMORY(&client_transmitter.tx_buffer[4], &client_payload, 2);
   TEST_ASSERT_EQUAL_UINT8(server_socket.rx_package_bytes_received, 0);
 }
 
@@ -131,13 +129,11 @@ void test_socket_continue_transmission_after_confirmation(void) {
   Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
 
   uint8_t client_payload[] = {
-      'L', 'o', 'r', 'e', 'm', ' ', 'i', 'p', 's', 'u', 'm', ' ', 'd', 'o',
-      'l', 'o', 'r', ' ', 's', 'i', 't', ' ', 'a', 'm', 'e', 't', ',', ' ',
-      'c', 'o', 'n', 's', 'e', 'c', 't', 'e', 't', 'u', 'r', ' ', 'a', 'd',
-      'i', 'p', 'i', 's', 'c', 'i', 'n', 'g', ' ', 'e', 'l', 'i', 't', ',',
-      ' ', 's', 'e', 'd', ' ', 'd', 'o', ' ', 'e', 'i', 'u', 's', 'm', 'o',
-      'd', ' ', 't', 'e', 'm', 'p', 'o', 'r', ' ', 'i', 'n', 'c', 'i', 'd',
-      'i', 'd', 'u', 'n', 't', ' ', 'u', 't'};
+      'L', 'o', 'r', 'e', 'm', ' ', 'i', 'p', 's', 'u', 'm', ' ', 'd', 'o', 'l', 'o', 'r', ' ', 's',
+      'i', 't', ' ', 'a', 'm', 'e', 't', ',', ' ', 'c', 'o', 'n', 's', 'e', 'c', 't', 'e', 't', 'u',
+      'r', ' ', 'a', 'd', 'i', 'p', 'i', 's', 'c', 'i', 'n', 'g', ' ', 'e', 'l', 'i', 't', ',', ' ',
+      's', 'e', 'd', ' ', 'd', 'o', ' ', 'e', 'i', 'u', 's', 'm', 'o', 'd', ' ', 't', 'e', 'm', 'p',
+      'o', 'r', ' ', 'i', 'n', 'c', 'i', 'd', 'i', 'd', 'u', 'n', 't', ' ', 'u', 't'};
   uint8_t server_buffer[sizeof(client_payload)] = {0};
 
   LiFi_Socket_Read(&server_socket, server_buffer);
@@ -147,10 +143,8 @@ void test_socket_continue_transmission_after_confirmation(void) {
 
   // client socket sent payload and switched to the confirmation mode
   TEST_ASSERT_TRUE(client_socket.is_tx_confirmation_required);
-  TEST_ASSERT_EQUAL_UINT(1,
-                         LiFi_Transmitter_ToConfirmationMode_fake.call_count);
-  TEST_ASSERT_EQUAL_PTR(&client_transmitter,
-                        LiFi_Transmitter_ToConfirmationMode_fake.arg0_val);
+  TEST_ASSERT_EQUAL_UINT(1, LiFi_Transmitter_ToConfirmationMode_fake.call_count);
+  TEST_ASSERT_EQUAL_PTR(&client_transmitter, LiFi_Transmitter_ToConfirmationMode_fake.arg0_val);
 
   // server socket is prepared ACK payload, 1 symbol
   TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[3], 1);
@@ -162,8 +156,7 @@ void test_socket_continue_transmission_after_confirmation(void) {
   TEST_ASSERT_FALSE(client_socket.is_tx_confirmation_required);
   TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[2], 1);
   TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[3], ACK);
-  TEST_ASSERT_EQUAL_MEMORY(&client_transmitter.tx_buffer[4],
-                           &client_payload[35], 35);
+  TEST_ASSERT_EQUAL_MEMORY(&client_transmitter.tx_buffer[4], &client_payload[35], 35);
 }
 
 int main(void) {
