@@ -40,22 +40,19 @@ static void wrap_to_lifi_protocol_package(
   uint8_t id, 
   uint8_t length
 ) {
-  uint8_t index = 0;
-
   // protocol package is: 
   // [ preambule | start byte | package type | package id | package length | payload | CRC ]
 
-  dest_buffer[index++] = PREAMBULE;
-  dest_buffer[index++] = START_BYTE;
-  dest_buffer[index++] = package_type;
-  dest_buffer[index++] = id;
-  dest_buffer[index++] = length;
+  dest_buffer[X_PACKAGE_PREMBULE_INDEX] = PREAMBULE;
+  dest_buffer[TX_PACKAGE_START_INDEX] = START_BYTE;
+  dest_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX] = package_type;
+  dest_buffer[TX_PACKAGE_ID_INDEX] = id;
+  dest_buffer[TX_PACKAGE_LENGTH_INDEX] = length;
 
-  for (uint8_t i = 0; i < length; i++) {
-    dest_buffer[index++] = source_buffer[i];
-  }
+  memcpy(dest_buffer + TX_PACKAGE_HEADER_BYTES, source_buffer, length);
 
-  dest_buffer[index] = calculate_crc(source_buffer, length);
+  uint8_t crc_index = TX_PACKAGE_HEADER_BYTES + length;
+  dest_buffer[crc_index] = calculate_crc(dest_buffer + TX_PACKAGE_PACKAGE_TYPE_INDEX, length + TX_PACKAGE_HEADER_BYTES - 2);
 }
 
 static void reset_socket(LiFi_Socket_t *socket) {
@@ -115,7 +112,7 @@ static void process_received_package(LiFi_Socket_t *socket) {
 
   uint8_t crc = socket->rx_package[socket->rx_package_bytes_received - 1];
   uint8_t payload_length = socket->rx_package[RX_PACKAGE_LENGTH_INDEX];
-  if (crc != calculate_crc(socket->rx_package + RX_PACKAGE_HEADER_BYTES, payload_length)) {
+  if (crc != calculate_crc(socket->rx_package + RX_PACKAGE_PACKAGE_TYPE_INDEX, payload_length + RX_PACKAGE_HEADER_BYTES - 1)) {
     socket->rx_package_bytes_received = 0;
     LiFi_Socket_Nak(socket, package_id);
     return;
@@ -140,7 +137,7 @@ static bool is_received_received_package_confirmed(LiFi_Socket_t *socket) {
     return false;
   }
 
-  if (crc != calculate_crc(socket->rx_package + 3, payload_length)) {
+  if (crc != calculate_crc(socket->rx_package + RX_PACKAGE_PACKAGE_TYPE_INDEX, payload_length + RX_PACKAGE_HEADER_BYTES - 1)) {
     return false;
   }
 
