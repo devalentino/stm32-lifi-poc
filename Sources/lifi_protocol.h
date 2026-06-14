@@ -9,7 +9,25 @@
 #define PREAMBULE 0x55
 #define ACK 0x56
 #define NAK 0x57
+
 #define MAX_TRANSMIT_RETRIES_COUNT 0x5
+
+#define X_PACKAGE_PREMBULE_INDEX 0
+#define TX_PACKAGE_START_INDEX 1
+#define TX_PACKAGE_PACKAGE_TYPE_INDEX 2
+#define TX_PACKAGE_ID_INDEX 3
+#define TX_PACKAGE_LENGTH_INDEX 4
+#define TX_PACKAGE_HEADER_BYTES 5
+
+#define RX_PACKAGE_START_INDEX 0
+#define RX_PACKAGE_PACKAGE_TYPE_INDEX 1
+#define RX_PACKAGE_ID_INDEX 2
+#define RX_PACKAGE_LENGTH_INDEX 3
+#define RX_PACKAGE_HEADER_BYTES 4
+
+typedef enum  {
+  PACKAGE_TYPE_PAYLOAD = 1
+} PackageType_t;
 
 typedef struct {
   LiFi_Transmitter_t *transmitter;

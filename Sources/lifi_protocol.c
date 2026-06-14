@@ -33,15 +33,21 @@ static uint8_t calculate_crc(uint8_t *buffer, uint8_t length) {
   return crc;
 }
 
-static void wrap_to_lifi_protocol_package(uint8_t *dest_buffer, uint8_t *source_buffer,
-                                          uint8_t length, uint8_t id) {
+static void wrap_to_lifi_protocol_package(
+  uint8_t *dest_buffer, 
+  uint8_t *source_buffer,
+  PackageType_t package_type, 
+  uint8_t id, 
+  uint8_t length
+) {
   uint8_t index = 0;
 
-  // protocol package is: [ preambule | start byte | package id | package length
-  // | payload | CRC ]
+  // protocol package is: 
+  // [ preambule | start byte | package type | package id | package length | payload | CRC ]
 
   dest_buffer[index++] = PREAMBULE;
   dest_buffer[index++] = START_BYTE;
+  dest_buffer[index++] = package_type;
   dest_buffer[index++] = id;
   dest_buffer[index++] = length;
 
@@ -80,18 +86,23 @@ static void setup_transmission(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t l
 
 static void transmit_package(LiFi_Socket_t *socket) {
   uint8_t payload_length = socket->tx_buffer_length - socket->tx_bytes_processed;
-  if (socket->tx_buffer_length > LIFI_TX_BUFFER_SIZE - 5) {
-    payload_length = LIFI_TX_BUFFER_SIZE - 5;
+  if (socket->tx_buffer_length > LIFI_TX_BUFFER_SIZE - TX_PACKAGE_HEADER_BYTES) {
+    payload_length = LIFI_TX_BUFFER_SIZE - TX_PACKAGE_HEADER_BYTES;
   }
-  wrap_to_lifi_protocol_package(socket->tx_package, socket->tx_buffer + socket->tx_bytes_processed,
-                                payload_length, socket->tx_package_id);
+  wrap_to_lifi_protocol_package(
+    socket->tx_package, 
+    socket->tx_buffer + socket->tx_bytes_processed,
+    PACKAGE_TYPE_PAYLOAD,
+    socket->tx_package_id, 
+    payload_length
+  );
 
-  uint8_t package_length = payload_length + 5;
+  uint8_t package_length = payload_length + TX_PACKAGE_HEADER_BYTES + 1;
   LiFi_Transmitter_TransmitBuffer(socket->transmitter, socket->tx_package, package_length);
 }
 
 static void process_received_package(LiFi_Socket_t *socket) {
-  uint8_t package_id = socket->rx_package[1];
+  uint8_t package_id = socket->rx_package[RX_PACKAGE_ID_INDEX];
   if (socket->rx_package_id == 0) {
     socket->rx_package_id = package_id;
   }
@@ -103,14 +114,14 @@ static void process_received_package(LiFi_Socket_t *socket) {
   }
 
   uint8_t crc = socket->rx_package[socket->rx_package_bytes_received - 1];
-  uint8_t payload_length = socket->rx_package[2];
-  if (crc != calculate_crc(socket->rx_package + 3, payload_length)) {
+  uint8_t payload_length = socket->rx_package[RX_PACKAGE_LENGTH_INDEX];
+  if (crc != calculate_crc(socket->rx_package + RX_PACKAGE_HEADER_BYTES, payload_length)) {
     socket->rx_package_bytes_received = 0;
     LiFi_Socket_Nak(socket, package_id);
     return;
   }
 
-  memcpy(socket->rx_buffer, socket->rx_package + 3, payload_length);
+  memcpy(socket->rx_buffer, socket->rx_package + RX_PACKAGE_HEADER_BYTES, payload_length);
 
   LiFi_Socket_Ack(socket, package_id);
 }
@@ -152,7 +163,7 @@ static void on_buffer_transmitted(void *context) {
 void on_package_received(LiFi_Socket_t *socket) {
   if (socket->is_tx_confirmation_required) {
     if (is_received_received_package_confirmed(socket)) {
-      uint8_t payload_length = socket->tx_package[3];
+      uint8_t payload_length = socket->tx_package[TX_PACKAGE_LENGTH_INDEX];
       socket->tx_bytes_processed += payload_length;
       if (socket->tx_bytes_processed < socket->tx_buffer_length) {
         socket->is_tx_confirmation_required = false;
@@ -184,12 +195,12 @@ static void on_byte_received(void *context) {
 
   socket->rx_package[socket->rx_package_bytes_received++] = socket->receiver->rx_byte;
 
-  if (socket->rx_package_bytes_received < 3) {
+  if (socket->rx_package_bytes_received < RX_PACKAGE_HEADER_BYTES) {
     return;
   }
 
-  uint8_t payload_length = socket->rx_package[2];
-  uint8_t package_length = payload_length + 4;
+  uint8_t payload_length = socket->rx_package[RX_PACKAGE_LENGTH_INDEX];
+  uint8_t package_length = payload_length + RX_PACKAGE_HEADER_BYTES + 1;
   uint8_t is_full_package_received = socket->rx_package_bytes_received >= package_length;
   if (!is_full_package_received) {
     return;
