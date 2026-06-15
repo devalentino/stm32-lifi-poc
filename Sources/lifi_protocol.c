@@ -112,7 +112,7 @@ static void on_buffer_transmitted(void *context) {
   }
 }
 
-static void process_payload_package(LiFi_Socket_t *socket) {
+static void on_package_received_process_payload(LiFi_Socket_t *socket) {
   
   uint8_t package_bytes_received = socket->rx_package_bytes_received;
   uint8_t package_id = socket->rx_package[RX_PACKAGE_ID_INDEX];
@@ -146,6 +146,11 @@ static bool is_received_received_package_confirmed(LiFi_Socket_t *socket) {
     return false;
   }
 
+  uint8_t package_type = socket->rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX];
+  if (package_type != PACKAGE_TYPE_ACK) {
+    return false;
+  }
+
   uint8_t crc = socket->rx_package[socket->rx_package_bytes_received - 1];
   uint8_t payload_length = socket->rx_package[RX_PACKAGE_LENGTH_INDEX];
 
@@ -156,7 +161,7 @@ static bool is_received_received_package_confirmed(LiFi_Socket_t *socket) {
   return true;
 }
 
-void process_confirmation_package(LiFi_Socket_t *socket) {
+void on_package_received_process_confirmation(LiFi_Socket_t *socket) {
   if (!socket->is_tx_confirmation_required) return;
 
   socket->is_tx_confirmation_required = false;
@@ -188,7 +193,7 @@ void process_confirmation_package(LiFi_Socket_t *socket) {
   }
 }
 
-void process_end_of_transmission_package(LiFi_Socket_t *socket) {
+void on_package_received_process_end_of_transmission(LiFi_Socket_t *socket) {
   if (socket->on_receive_success_callback != NULL)
     socket->on_receive_success_callback(socket);
 }
@@ -197,14 +202,14 @@ void on_package_received(LiFi_Socket_t *socket) {
 uint8_t package_type = socket->rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX];
     switch (package_type) {
       case PACKAGE_TYPE_PAYLOAD:
-        process_payload_package(socket);
+        on_package_received_process_payload(socket);
         break;
       case PACKAGE_TYPE_ACK: 
       case PACKAGE_TYPE_NAK:
-        process_confirmation_package(socket);
+        on_package_received_process_confirmation(socket);
         break;
       case PACKAGE_TYPE_EOT:
-        process_end_of_transmission_package(socket);
+        on_package_received_process_end_of_transmission(socket);
         break;
       default:
         break;
