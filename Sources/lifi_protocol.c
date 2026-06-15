@@ -226,8 +226,9 @@ static void on_byte_received(void *context) {
 }
 
 void LiFi_Socket_Init(LiFi_Socket_t *socket, LiFi_Transmitter_t *transmitter,
-                      LiFi_Receiver_t *receiver) {
+                      LiFi_Receiver_t *receiver, on_error_callback LiFi_Socket_onErrorCallback) {
   socket->is_busy = false;
+  socket->on_error_callback = on_error_callback;
   socket->is_tx_confirmation_required = false;
 
   socket->transmitter = transmitter;

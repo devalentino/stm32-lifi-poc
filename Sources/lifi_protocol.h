@@ -29,11 +29,20 @@ typedef enum {
   PACKAGE_TYPE_EOT = 0x59
 } PackageType_t;
 
-typedef struct {
+enum LiFi_Socket_Error_t {
+  LIFI_SOCKET_CONNECTION_ERROR
+}
+
+typedef struct LiFi_Socket_t LiFi_Socket_t;
+
+typedef void (*LiFi_Socket_onErrorCallback)(LiFi_Socket_Error_t error, LiFi_Socket_t *socket);
+
+struct LiFi_Socket_t {
   LiFi_Transmitter_t *transmitter;
   LiFi_Receiver_t *receiver;
 
   bool is_busy;
+  LiFi_Socket_onErrorCallback on_error_callback;
 
   uint8_t *tx_buffer;
   uint8_t tx_buffer_length;
@@ -51,7 +60,7 @@ typedef struct {
 } LiFi_Socket_t;
 
 void LiFi_Socket_Init(LiFi_Socket_t *socket, LiFi_Transmitter_t *transmitter,
-                      LiFi_Receiver_t *receiver);
+                      LiFi_Receiver_t *receiver, on_error_callback LiFi_Socket_onErrorCallback);
 
 void LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length);
 

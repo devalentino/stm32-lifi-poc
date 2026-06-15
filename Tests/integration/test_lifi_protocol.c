@@ -9,6 +9,7 @@ DEFINE_FFF_GLOBALS;
 
 FAKE_VOID_FUNC(LiFi_Transmitter_TransmitBuffer, LiFi_Transmitter_t *, const uint8_t *, uint8_t);
 FAKE_VOID_FUNC(LiFi_Transmitter_ToConfirmationMode, LiFi_Transmitter_t *);
+FAKE_VOID_FUNC()
 
 void setUp(void) {
   RESET_FAKE(LiFi_Transmitter_TransmitBuffer);
