@@ -29,9 +29,7 @@ typedef enum {
   PACKAGE_TYPE_EOT = 0x59
 } PackageType_t;
 
-typedef enum {
-  LIFI_SOCKET_CONNECTION_ERROR
-} LiFi_Socket_Error_t;
+typedef enum { LIFI_SOCKET_CONNECTION_ERROR } LiFi_Socket_Error_t;
 
 typedef struct LiFi_Socket_t LiFi_Socket_t;
 
@@ -63,13 +61,10 @@ struct LiFi_Socket_t {
   uint8_t rx_package_bytes_received;
 };
 
-void LiFi_Socket_Init(
-  LiFi_Socket_t *socket, 
-  LiFi_Transmitter_t *transmitter,
-  LiFi_Receiver_t *receiver, LiFi_Socket_onErrorCallback on_error_callback,
-  LiFi_Socket_onTransmissionSuccessfulCallback on_transmission_success_callback,
-  LiFi_Socket_onReceiveSuccessfulCallback on_receive_success_callback
-);
+void LiFi_Socket_Init(LiFi_Socket_t *socket, LiFi_Transmitter_t *transmitter,
+                      LiFi_Receiver_t *receiver, LiFi_Socket_onErrorCallback on_error_callback,
+                      LiFi_Socket_onTransmissionSuccessfulCallback on_transmission_success_callback,
+                      LiFi_Socket_onReceiveSuccessfulCallback on_receive_success_callback);
 
 void LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length);
 

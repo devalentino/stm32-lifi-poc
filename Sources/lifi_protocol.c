@@ -10,7 +10,7 @@
 static uint8_t PACKAGE_ID = 0;
 
 static uint8_t get_package_id() {
-  // TODO: if we have multiple sockets, we can have a collsions in package ids. 
+  // TODO: if we have multiple sockets, we can have a collsions in package ids.
   // We need to rework this approach
   ++PACKAGE_ID;
 
@@ -35,14 +35,9 @@ static uint8_t calculate_crc(uint8_t *buffer, uint8_t length) {
   return crc;
 }
 
-static void wrap_to_lifi_protocol_package(
-  uint8_t *dest_buffer, 
-  uint8_t *source_buffer,
-  uint8_t package_type, 
-  uint8_t id, 
-  uint8_t length
-) {
-  // protocol package is: 
+static void wrap_to_lifi_protocol_package(uint8_t *dest_buffer, uint8_t *source_buffer,
+                                          uint8_t package_type, uint8_t id, uint8_t length) {
+  // protocol package is:
   // [ preambule | start byte | package type | package id | package length | payload | CRC ]
 
   dest_buffer[TX_PACKAGE_PREMBULE_INDEX] = PREAMBULE;
@@ -54,7 +49,8 @@ static void wrap_to_lifi_protocol_package(
   memcpy(dest_buffer + TX_PACKAGE_HEADER_BYTES, source_buffer, length);
 
   uint8_t crc_index = TX_PACKAGE_HEADER_BYTES + length;
-  dest_buffer[crc_index] = calculate_crc(dest_buffer + TX_PACKAGE_PACKAGE_TYPE_INDEX, length + TX_PACKAGE_HEADER_BYTES - 2);
+  dest_buffer[crc_index] = calculate_crc(dest_buffer + TX_PACKAGE_PACKAGE_TYPE_INDEX,
+                                         length + TX_PACKAGE_HEADER_BYTES - 2);
 }
 
 static void reset_socket(LiFi_Socket_t *socket) {
@@ -73,13 +69,14 @@ static void reset_socket(LiFi_Socket_t *socket) {
   socket->is_busy = false;
 }
 
-static void setup_transmission(LiFi_Socket_t *socket, uint8_t *buffer, PackageType_t package_type, uint8_t package_id, uint8_t length) {
+static void setup_transmission(LiFi_Socket_t *socket, uint8_t *buffer, PackageType_t package_type,
+                               uint8_t package_id, uint8_t length) {
   socket->tx_buffer = buffer;
   socket->tx_buffer_length = length;
   socket->tx_bytes_processed = 0;
   socket->tx_retries_count = 0;
   socket->is_tx_confirmation_required = false;
-  socket->tx_package_type = (uint8_t) package_type;
+  socket->tx_package_type = (uint8_t)package_type;
   socket->tx_package_id = package_id;
 }
 
@@ -88,13 +85,8 @@ static void transmit_package(LiFi_Socket_t *socket) {
   if (socket->tx_buffer_length > LIFI_TX_BUFFER_SIZE - TX_PACKAGE_HEADER_BYTES - 1) {
     payload_length = LIFI_TX_BUFFER_SIZE - TX_PACKAGE_HEADER_BYTES - 1;
   }
-  wrap_to_lifi_protocol_package(
-    socket->tx_package, 
-    socket->tx_buffer + socket->tx_bytes_processed,
-    socket->tx_package_type,
-    socket->tx_package_id, 
-    payload_length
-  );
+  wrap_to_lifi_protocol_package(socket->tx_package, socket->tx_buffer + socket->tx_bytes_processed,
+                                socket->tx_package_type, socket->tx_package_id, payload_length);
 
   uint8_t package_length = payload_length + TX_PACKAGE_HEADER_BYTES + 1;
   LiFi_Transmitter_TransmitBuffer(socket->transmitter, socket->tx_package, package_length);
@@ -113,7 +105,7 @@ static void on_buffer_transmitted(void *context) {
 }
 
 static void on_package_received_process_payload(LiFi_Socket_t *socket) {
-  
+
   uint8_t package_bytes_received = socket->rx_package_bytes_received;
   uint8_t package_id = socket->rx_package[RX_PACKAGE_ID_INDEX];
   socket->rx_package_bytes_received = 0;
@@ -129,7 +121,8 @@ static void on_package_received_process_payload(LiFi_Socket_t *socket) {
 
   uint8_t crc = socket->rx_package[package_bytes_received - 1];
   uint8_t payload_length = socket->rx_package[RX_PACKAGE_LENGTH_INDEX];
-  if (crc != calculate_crc(socket->rx_package + RX_PACKAGE_PACKAGE_TYPE_INDEX, payload_length + RX_PACKAGE_HEADER_BYTES - 1)) {
+  if (crc != calculate_crc(socket->rx_package + RX_PACKAGE_PACKAGE_TYPE_INDEX,
+                           payload_length + RX_PACKAGE_HEADER_BYTES - 1)) {
     LiFi_Socket_Nak(socket, package_id);
     return;
   }
@@ -154,7 +147,8 @@ static bool is_received_received_package_confirmed(LiFi_Socket_t *socket) {
   uint8_t crc = socket->rx_package[socket->rx_package_bytes_received - 1];
   uint8_t payload_length = socket->rx_package[RX_PACKAGE_LENGTH_INDEX];
 
-  if (crc != calculate_crc(socket->rx_package + RX_PACKAGE_PACKAGE_TYPE_INDEX, payload_length + RX_PACKAGE_HEADER_BYTES - 1)) {
+  if (crc != calculate_crc(socket->rx_package + RX_PACKAGE_PACKAGE_TYPE_INDEX,
+                           payload_length + RX_PACKAGE_HEADER_BYTES - 1)) {
     return false;
   }
 
@@ -162,10 +156,11 @@ static bool is_received_received_package_confirmed(LiFi_Socket_t *socket) {
 }
 
 void on_package_received_process_confirmation(LiFi_Socket_t *socket) {
-  if (!socket->is_tx_confirmation_required) return;
+  if (!socket->is_tx_confirmation_required)
+    return;
 
   socket->is_tx_confirmation_required = false;
-  
+
   if (is_received_received_package_confirmed(socket)) {
     uint8_t payload_length = socket->tx_package[TX_PACKAGE_LENGTH_INDEX];
     socket->tx_bytes_processed += payload_length;
@@ -199,21 +194,21 @@ void on_package_received_process_end_of_transmission(LiFi_Socket_t *socket) {
 }
 
 void on_package_received(LiFi_Socket_t *socket) {
-uint8_t package_type = socket->rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX];
-    switch (package_type) {
-      case PACKAGE_TYPE_PAYLOAD:
-        on_package_received_process_payload(socket);
-        break;
-      case PACKAGE_TYPE_ACK: 
-      case PACKAGE_TYPE_NAK:
-        on_package_received_process_confirmation(socket);
-        break;
-      case PACKAGE_TYPE_EOT:
-        on_package_received_process_end_of_transmission(socket);
-        break;
-      default:
-        break;
-    }
+  uint8_t package_type = socket->rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX];
+  switch (package_type) {
+  case PACKAGE_TYPE_PAYLOAD:
+    on_package_received_process_payload(socket);
+    break;
+  case PACKAGE_TYPE_ACK:
+  case PACKAGE_TYPE_NAK:
+    on_package_received_process_confirmation(socket);
+    break;
+  case PACKAGE_TYPE_EOT:
+    on_package_received_process_end_of_transmission(socket);
+    break;
+  default:
+    break;
+  }
 }
 
 static void on_byte_received(void *context) {
@@ -239,18 +234,15 @@ static void on_byte_received(void *context) {
   on_package_received(socket);
 }
 
-void LiFi_Socket_Init(
-  LiFi_Socket_t *socket, 
-  LiFi_Transmitter_t *transmitter,
-  LiFi_Receiver_t *receiver, LiFi_Socket_onErrorCallback on_error_callback,
-  LiFi_Socket_onTransmissionSuccessfulCallback on_transmission_success_callback,
-  LiFi_Socket_onReceiveSuccessfulCallback on_receive_success_callback
-) {
+void LiFi_Socket_Init(LiFi_Socket_t *socket, LiFi_Transmitter_t *transmitter,
+                      LiFi_Receiver_t *receiver, LiFi_Socket_onErrorCallback on_error_callback,
+                      LiFi_Socket_onTransmissionSuccessfulCallback on_transmission_success_callback,
+                      LiFi_Socket_onReceiveSuccessfulCallback on_receive_success_callback) {
   socket->is_busy = false;
   socket->on_error_callback = on_error_callback;
   socket->on_transmission_success_callback = on_transmission_success_callback;
   socket->on_receive_success_callback = on_receive_success_callback;
-  
+
   socket->is_tx_confirmation_required = false;
 
   socket->transmitter = transmitter;

@@ -38,8 +38,10 @@ void test_transmit_payload(void) {
   LiFi_Receiver_t server_receiver = {0};
   LiFi_Socket_t server_socket = {0};
 
-  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, NULL, Mock_LiFi_Socket_onTransmissionSuccessfulCallback, NULL);
-  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, Mock_LiFi_Socket_onReceiveSuccessfulCallback);
+  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, NULL,
+                   Mock_LiFi_Socket_onTransmissionSuccessfulCallback, NULL);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL,
+                   Mock_LiFi_Socket_onReceiveSuccessfulCallback);
   Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
   Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
 
@@ -57,7 +59,8 @@ void test_transmit_payload(void) {
 
   // success callback had been called for client
   TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
-  TEST_ASSERT_EQUAL_PTR(&client_socket, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.arg0_val);
+  TEST_ASSERT_EQUAL_PTR(&client_socket,
+                        Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.arg0_val);
 
   Fake_LiFi_RunUntilIdle();
 
@@ -113,7 +116,8 @@ void test_transmit_payload__socket_is_reset_after_retries_limit(void) {
   LiFi_Receiver_t server_receiver = {0};
   LiFi_Socket_t server_socket = {0};
 
-  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, Mock_LiFi_Socket_onErrorCallback, NULL, NULL);
+  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver,
+                   Mock_LiFi_Socket_onErrorCallback, NULL, NULL);
   LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL);
   Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
   Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
@@ -126,7 +130,7 @@ void test_transmit_payload__socket_is_reset_after_retries_limit(void) {
 
   client_transmitter.tx_buffer[6] = 255;
   client_socket.tx_retries_count = MAX_TRANSMIT_RETRIES_COUNT - 1;
-  
+
   Fake_LiFi_RunUntilIdle(); // 1st iteration is sending from client to server
   Fake_LiFi_RunUntilIdle(); // 2nd iteration is sending confirmation from server to client
 
@@ -202,23 +206,24 @@ void test_socket_continue_transmission_after_confirmation(void) {
   TEST_ASSERT_EQUAL_PTR(&client_transmitter, LiFi_Transmitter_ToConfirmationMode_fake.arg0_val);
 
   // server socket is prepared ACK package
-  TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX], PACKAGE_TYPE_ACK);
+  TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX],
+                          PACKAGE_TYPE_ACK);
   TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[TX_PACKAGE_LENGTH_INDEX], 0);
 
   Fake_LiFi_RunUntilIdle();
 
   // client socket received ACK and prepared next package to send
   TEST_ASSERT_FALSE(client_socket.is_tx_confirmation_required);
-  TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX], PACKAGE_TYPE_ACK);
+  TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX],
+                          PACKAGE_TYPE_ACK);
   TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[RX_PACKAGE_LENGTH_INDEX], 0);
 
-  TEST_ASSERT_EQUAL_MEMORY(
-    &client_transmitter.tx_buffer[TX_PACKAGE_HEADER_BYTES], 
-    &client_payload[client_socket.tx_bytes_processed], 
-    LIFI_TX_BUFFER_SIZE - TX_PACKAGE_HEADER_BYTES - 1
-  );
-  
-  // TODO: test package id is incremented for the next package, different sockets does not have collisions
+  TEST_ASSERT_EQUAL_MEMORY(&client_transmitter.tx_buffer[TX_PACKAGE_HEADER_BYTES],
+                           &client_payload[client_socket.tx_bytes_processed],
+                           LIFI_TX_BUFFER_SIZE - TX_PACKAGE_HEADER_BYTES - 1);
+
+  // TODO: test package id is incremented for the next package, different sockets does not have
+  // collisions
 }
 
 int main(void) {
