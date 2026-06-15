@@ -11,11 +11,15 @@ DEFINE_FFF_GLOBALS;
 FAKE_VOID_FUNC(LiFi_Transmitter_TransmitBuffer, LiFi_Transmitter_t *, const uint8_t *, uint8_t);
 FAKE_VOID_FUNC(LiFi_Transmitter_ToConfirmationMode, LiFi_Transmitter_t *);
 FAKE_VOID_FUNC(Mock_LiFi_Socket_onErrorCallback, LiFi_Socket_Error_t, LiFi_Socket_t *);
+FAKE_VOID_FUNC(Mock_LiFi_Socket_onTransmissionSuccessfulCallback, LiFi_Socket_t *);
+FAKE_VOID_FUNC(Mock_LiFi_Socket_onReceiveSuccessfulCallback, LiFi_Socket_t *);
 
 void setUp(void) {
   RESET_FAKE(LiFi_Transmitter_TransmitBuffer);
   RESET_FAKE(LiFi_Transmitter_ToConfirmationMode);
   RESET_FAKE(Mock_LiFi_Socket_onErrorCallback);
+  RESET_FAKE(Mock_LiFi_Socket_onTransmissionSuccessfulCallback);
+  RESET_FAKE(Mock_LiFi_Socket_onReceiveSuccessfulCallback);
   FFF_RESET_HISTORY();
 
   Fake_LiFi_Link_Reset();
@@ -34,8 +38,8 @@ void test_transmit_payload(void) {
   LiFi_Receiver_t server_receiver = {0};
   LiFi_Socket_t server_socket = {0};
 
-  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, NULL, NULL, NULL);
-  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL);
+  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, NULL, Mock_LiFi_Socket_onTransmissionSuccessfulCallback, NULL);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, Mock_LiFi_Socket_onReceiveSuccessfulCallback);
   Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
   Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
 
@@ -48,6 +52,18 @@ void test_transmit_payload(void) {
 
   TEST_ASSERT_EQUAL_UINT8('H', read_buffer[0]);
   TEST_ASSERT_EQUAL_UINT8('i', read_buffer[1]);
+
+  Fake_LiFi_RunUntilIdle();
+
+  // success callback had been called for client
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
+  TEST_ASSERT_EQUAL_PTR(&client_socket, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.arg0_val);
+
+  Fake_LiFi_RunUntilIdle();
+
+  // success callback had been called for server
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onReceiveSuccessfulCallback_fake.call_count);
+  TEST_ASSERT_EQUAL_PTR(&server_socket, Mock_LiFi_Socket_onReceiveSuccessfulCallback_fake.arg0_val);
 }
 
 void test_transmit_payload__wrong_crc(void) {
@@ -208,11 +224,11 @@ void test_socket_continue_transmission_after_confirmation(void) {
 int main(void) {
   UNITY_BEGIN();
 
-  // RUN_TEST(test_transmit_payload);
+  RUN_TEST(test_transmit_payload);
   // RUN_TEST(test_transmit_payload__wrong_crc);
   // RUN_TEST(test_transmit_payload__socket_is_reset_after_retries_limit);
   // RUN_TEST(test_transmit_payload__receiver_ignores_package_on_wrong_start_byte);
-  RUN_TEST(test_socket_continue_transmission_after_confirmation);
+  // RUN_TEST(test_socket_continue_transmission_after_confirmation);
 
   return UNITY_END();
 }
