@@ -7,12 +7,9 @@
 #include "lifi_transmitter.h"
 
 #define PREAMBULE 0x55
-#define ACK 0x56
-#define NAK 0x57
-
 #define MAX_TRANSMIT_RETRIES_COUNT 0x5
 
-#define X_PACKAGE_PREMBULE_INDEX 0
+#define TX_PACKAGE_PREMBULE_INDEX 0
 #define TX_PACKAGE_START_INDEX 1
 #define TX_PACKAGE_PACKAGE_TYPE_INDEX 2
 #define TX_PACKAGE_ID_INDEX 3
@@ -25,8 +22,11 @@
 #define RX_PACKAGE_LENGTH_INDEX 3
 #define RX_PACKAGE_HEADER_BYTES 4
 
-typedef enum  {
-  PACKAGE_TYPE_PAYLOAD = 1
+typedef enum {
+  PACKAGE_TYPE_ACK = 0x56,
+  PACKAGE_TYPE_NAK = 0x57,
+  PACKAGE_TYPE_PAYLOAD = 0x58,
+  PACKAGE_TYPE_EOT = 0x59
 } PackageType_t;
 
 typedef struct {
@@ -40,6 +40,7 @@ typedef struct {
   uint8_t tx_bytes_processed;
   uint8_t tx_package[LIFI_TX_BUFFER_SIZE];
   uint8_t tx_package_id;
+  uint8_t tx_package_type;
   uint8_t tx_retries_count;
   bool is_tx_confirmation_required;
 

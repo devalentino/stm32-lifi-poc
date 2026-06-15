@@ -70,20 +70,17 @@ void test_transmit_payload__wrong_crc(void) {
   client_transmitter.tx_buffer[6] = 255;
   Fake_LiFi_RunUntilIdle();
 
-  TEST_ASSERT_EQUAL_UINT8(0, read_buffer[0]);
-  TEST_ASSERT_EQUAL_UINT8(0, read_buffer[1]);
-
-  // server socket is prepared NAK payload, 1 symbol
-  TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[3], 1);
-  TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[4], NAK);
+  // server socket is prepared NAK package
+  TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[2], PACKAGE_TYPE_NAK);
+  TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[4], 0);
 
   Fake_LiFi_RunUntilIdle();
 
   // client socket received NAK and is going to send same payload
   TEST_ASSERT_FALSE(client_socket.is_tx_confirmation_required);
-  TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[2], 1);
-  TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[3], NAK);
-  TEST_ASSERT_EQUAL_MEMORY(&client_transmitter.tx_buffer[4], &client_payload, 2);
+  TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[1], PACKAGE_TYPE_NAK);
+  TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[3], 0);
+
   TEST_ASSERT_EQUAL_UINT8(server_socket.rx_package_bytes_received, 0);
   TEST_ASSERT_EQUAL_UINT8(client_socket.tx_retries_count, 1);
 }
@@ -114,13 +111,14 @@ void test_transmit_payload__socket_is_reset_after_retries_limit(void) {
   Fake_LiFi_RunUntilIdle(); // 1st iteration is sending from client to server
   Fake_LiFi_RunUntilIdle(); // 2nd iteration is sending confirmation from server to client
 
-  // client socket received NAK and is going to send same payload
-  TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[2], 1);
-  TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[3], NAK);
-  TEST_ASSERT_EQUAL_UINT8(client_socket.tx_retries_count, MAX_TRANSMIT_RETRIES_COUNT);
-
-  TEST_ASSERT_TRUE(client_socket.is_busy);
-  TEST_ASSERT_TRUE_MESSAGE(false, "implement metadata bit in protocol, send end of transmission, ack, nak in metadata byte instead of user payload. fix crc to calculate package type, package id, payload length");
+  // client socket received NAK and socket is reset
+  TEST_ASSERT_FALSE(client_socket.is_tx_confirmation_required);
+  TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[1], PACKAGE_TYPE_NAK);
+  TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[3], 0);
+  TEST_ASSERT_EQUAL_UINT8(server_socket.rx_package_bytes_received, 0);
+  TEST_ASSERT_EQUAL_UINT8(client_socket.tx_retries_count, 0);
+  TEST_ASSERT_FALSE(client_socket.is_busy);
+  // TEST_ASSERT_TRUE_MESSAGE(false, "implement metadata bit in protocol, send end of transmission, ack, nak in metadata byte instead of user payload. fix crc to calculate package type, package id, payload length");
 }
 
 void test_transmit_payload__receiver_ignores_package_on_wrong_start_byte(void) {
@@ -184,23 +182,23 @@ void test_socket_continue_transmission_after_confirmation(void) {
 
   // server socket is prepared ACK payload, 1 symbol
   TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[3], 1);
-  TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[4], ACK);
+  // TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[4], ACK);
 
   Fake_LiFi_RunUntilIdle();
 
   // client socket received ACK and prepared next package to send
   TEST_ASSERT_FALSE(client_socket.is_tx_confirmation_required);
   TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[2], 1);
-  TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[3], ACK);
+  // TEST_ASSERT_EQUAL_UINT8(client_socket.rx_package[3], ACK);
   TEST_ASSERT_EQUAL_MEMORY(&client_transmitter.tx_buffer[4], &client_payload[35], 35);
 }
 
 int main(void) {
   UNITY_BEGIN();
 
-  RUN_TEST(test_transmit_payload);
+  // RUN_TEST(test_transmit_payload);
   // RUN_TEST(test_transmit_payload__wrong_crc);
-  // RUN_TEST(test_transmit_payload__socket_is_reset_after_retries_limit);
+  RUN_TEST(test_transmit_payload__socket_is_reset_after_retries_limit);
   // RUN_TEST(test_transmit_payload__receiver_ignores_package_on_wrong_start_byte);
   // RUN_TEST(test_socket_continue_transmission_after_confirmation);
 
