@@ -24,7 +24,7 @@ int main(void)
 
   LiFi_Transmitter_Init(&transmitter, &transmitter_timer, GPIOA, GPIO_PIN_5);
   LiFi_Receiver_Init(&receiver, &receiver_timer, GPIOA, GPIO_PIN_1);
-  LiFi_Socket_Init(&socket, &transmitter, &receiver);
+  LiFi_Socket_Init(&socket, &transmitter, &receiver, NULL);
 
   HAL_Hardware_Factory_Init();
 
