@@ -249,7 +249,7 @@ void test_socket_is_blocked_if_transition_in_progress(void) {
 
   TEST_ASSERT_TRUE(LiFi_Socket_Read(&server_socket, read_buffer));
   TEST_ASSERT_FALSE(LiFi_Socket_Read(&server_socket, read_buffer));
-  
+
   TEST_ASSERT_TRUE(LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload)));
   TEST_ASSERT_FALSE(LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload)));
 }

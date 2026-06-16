@@ -57,7 +57,8 @@ static void reset_socket(LiFi_Socket_t *socket) {
   socket->is_busy = false;
 }
 
-static void setup_transmission(LiFi_Socket_t *socket, uint8_t *buffer, PackageType_t package_type, uint8_t length) {
+static void setup_transmission(LiFi_Socket_t *socket, uint8_t *buffer, PackageType_t package_type,
+                               uint8_t length) {
   socket->tx_buffer = buffer;
   socket->tx_buffer_length = length;
   socket->tx_bytes_processed = 0;
