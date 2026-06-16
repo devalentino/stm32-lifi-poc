@@ -257,12 +257,12 @@ void test_socket_is_blocked_if_transition_in_progress(void) {
 int main(void) {
   UNITY_BEGIN();
 
-  // RUN_TEST(test_transmit_payload);
-  // RUN_TEST(test_transmit_payload__wrong_crc);
-  // RUN_TEST(test_transmit_payload__socket_is_reset_after_retries_limit);
-  // RUN_TEST(test_transmit_payload__receiver_ignores_package_on_wrong_start_byte);
+  RUN_TEST(test_transmit_payload);
+  RUN_TEST(test_transmit_payload__wrong_crc);
+  RUN_TEST(test_transmit_payload__socket_is_reset_after_retries_limit);
+  RUN_TEST(test_transmit_payload__receiver_ignores_package_on_wrong_start_byte);
   RUN_TEST(test_socket_continue_transmission_after_confirmation);
-  // RUN_TEST(test_socket_is_blocked_if_transition_in_progress);
+  RUN_TEST(test_socket_is_blocked_if_transition_in_progress);
 
   return UNITY_END();
 }

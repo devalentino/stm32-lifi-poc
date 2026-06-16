@@ -71,10 +71,10 @@ bool LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length);
 bool LiFi_Socket_Read(LiFi_Socket_t *socket, uint8_t *buffer);
 
 // TODO: next functions can be static functions, not part of Public API
-void LiFi_Socket_Ack(LiFi_Socket_t *socket, uint8_t package_id);
+void LiFi_Socket_Ack(LiFi_Socket_t *socket);
 
-void LiFi_Socket_Nak(LiFi_Socket_t *socket, uint8_t package_id);
+void LiFi_Socket_Nak(LiFi_Socket_t *socket);
 
-void LiFi_Socket_EOT(LiFi_Socket_t *socket, uint8_t package_id);
+void LiFi_Socket_EOT(LiFi_Socket_t *socket);
 
 #endif

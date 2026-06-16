@@ -7,18 +7,6 @@
 #include "lifi_receiver.h"
 #include "lifi_transmitter.h"
 
-static uint8_t PACKAGE_ID = 0;
-
-static uint8_t get_package_id() {
-  // TODO: if we have multiple sockets, we can have a collsions in package ids.
-  // We need to rework this approach
-  ++PACKAGE_ID;
-
-  if (PACKAGE_ID == 0)
-    ++PACKAGE_ID;
-  return PACKAGE_ID;
-}
-
 static uint8_t calculate_crc(uint8_t *buffer, uint8_t length) {
   uint8_t crc = 0x00;
 
@@ -69,18 +57,23 @@ static void reset_socket(LiFi_Socket_t *socket) {
   socket->is_busy = false;
 }
 
-static void setup_transmission(LiFi_Socket_t *socket, uint8_t *buffer, PackageType_t package_type,
-                               uint8_t package_id, uint8_t length) {
+static void setup_transmission(LiFi_Socket_t *socket, uint8_t *buffer, PackageType_t package_type, uint8_t length) {
   socket->tx_buffer = buffer;
   socket->tx_buffer_length = length;
   socket->tx_bytes_processed = 0;
   socket->tx_retries_count = 0;
   socket->is_tx_confirmation_required = false;
   socket->tx_package_type = (uint8_t)package_type;
-  socket->tx_package_id = package_id;
+  socket->tx_package_id = 0;
 }
 
 static void transmit_package(LiFi_Socket_t *socket) {
+  if (socket->tx_package_type == PACKAGE_TYPE_ACK || socket->tx_package_type == PACKAGE_TYPE_NAK) {
+    socket->tx_package_id = socket->rx_package_id;
+  } else {
+    socket->tx_package_id++;
+  }
+
   uint8_t payload_length = socket->tx_buffer_length - socket->tx_bytes_processed;
   if (socket->tx_buffer_length > LIFI_TX_BUFFER_SIZE - TX_PACKAGE_HEADER_BYTES - 1) {
     payload_length = LIFI_TX_BUFFER_SIZE - TX_PACKAGE_HEADER_BYTES - 1;
@@ -115,7 +108,7 @@ static void on_package_received_process_payload(LiFi_Socket_t *socket) {
   }
 
   if (socket->rx_package_id != package_id) {
-    LiFi_Socket_Nak(socket, package_id);
+    LiFi_Socket_Nak(socket);
     return;
   }
 
@@ -123,13 +116,13 @@ static void on_package_received_process_payload(LiFi_Socket_t *socket) {
   uint8_t payload_length = socket->rx_package[RX_PACKAGE_LENGTH_INDEX];
   if (crc != calculate_crc(socket->rx_package + RX_PACKAGE_PACKAGE_TYPE_INDEX,
                            payload_length + RX_PACKAGE_HEADER_BYTES - 1)) {
-    LiFi_Socket_Nak(socket, package_id);
+    LiFi_Socket_Nak(socket);
     return;
   }
 
   memcpy(socket->rx_buffer, socket->rx_package + RX_PACKAGE_HEADER_BYTES, payload_length);
 
-  LiFi_Socket_Ack(socket, package_id);
+  LiFi_Socket_Ack(socket);
 }
 
 static bool is_received_received_package_confirmed(LiFi_Socket_t *socket) {
@@ -164,12 +157,11 @@ void on_package_received_process_confirmation(LiFi_Socket_t *socket) {
   if (is_received_received_package_confirmed(socket)) {
     uint8_t payload_length = socket->tx_package[TX_PACKAGE_LENGTH_INDEX];
     socket->tx_bytes_processed += payload_length;
-    socket->tx_package_id = get_package_id();
 
     if (socket->tx_bytes_processed < socket->tx_buffer_length) {
       transmit_package(socket);
     } else {
-      LiFi_Socket_EOT(socket, socket->tx_package_id);
+      LiFi_Socket_EOT(socket);
 
       if (socket->on_transmission_success_callback != NULL)
         socket->on_transmission_success_callback(socket);
@@ -259,7 +251,7 @@ bool LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length) {
     return false;
 
   socket->is_busy = true;
-  setup_transmission(socket, buffer, PACKAGE_TYPE_PAYLOAD, get_package_id(), length);
+  setup_transmission(socket, buffer, PACKAGE_TYPE_PAYLOAD, length);
   transmit_package(socket);
   return true;
 }
@@ -279,17 +271,17 @@ bool LiFi_Socket_Read(LiFi_Socket_t *socket, uint8_t *buffer) {
 }
 
 // TODO: we don't need package_id as parameter, it is already in socket
-void LiFi_Socket_Ack(LiFi_Socket_t *socket, uint8_t package_id) {
-  setup_transmission(socket, NULL, PACKAGE_TYPE_ACK, package_id, 0);
+void LiFi_Socket_Ack(LiFi_Socket_t *socket) {
+  setup_transmission(socket, NULL, PACKAGE_TYPE_ACK, 0);
   transmit_package(socket);
 }
 
-void LiFi_Socket_Nak(LiFi_Socket_t *socket, uint8_t package_id) {
-  setup_transmission(socket, NULL, PACKAGE_TYPE_NAK, package_id, 0);
+void LiFi_Socket_Nak(LiFi_Socket_t *socket) {
+  setup_transmission(socket, NULL, PACKAGE_TYPE_NAK, 0);
   transmit_package(socket);
 }
 
-void LiFi_Socket_EOT(LiFi_Socket_t *socket, uint8_t package_id) {
-  setup_transmission(socket, NULL, PACKAGE_TYPE_EOT, package_id, 0);
+void LiFi_Socket_EOT(LiFi_Socket_t *socket) {
+  setup_transmission(socket, NULL, PACKAGE_TYPE_EOT, 0);
   transmit_package(socket);
 }
