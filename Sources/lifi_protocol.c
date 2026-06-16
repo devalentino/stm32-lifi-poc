@@ -97,6 +97,21 @@ static void on_buffer_transmitted(void *context) {
   }
 }
 
+static void ack(LiFi_Socket_t *socket) {
+  setup_transmission(socket, NULL, PACKAGE_TYPE_ACK, 0);
+  transmit_package(socket);
+}
+
+static void nak(LiFi_Socket_t *socket) {
+  setup_transmission(socket, NULL, PACKAGE_TYPE_NAK, 0);
+  transmit_package(socket);
+}
+
+static void eot(LiFi_Socket_t *socket) {
+  setup_transmission(socket, NULL, PACKAGE_TYPE_EOT, 0);
+  transmit_package(socket);
+}
+
 static void on_package_received_process_payload(LiFi_Socket_t *socket) {
 
   uint8_t package_bytes_received = socket->rx_package_bytes_received;
@@ -108,7 +123,7 @@ static void on_package_received_process_payload(LiFi_Socket_t *socket) {
   }
 
   if (socket->rx_package_id != package_id) {
-    LiFi_Socket_Nak(socket);
+    nak(socket);
     return;
   }
 
@@ -116,13 +131,13 @@ static void on_package_received_process_payload(LiFi_Socket_t *socket) {
   uint8_t payload_length = socket->rx_package[RX_PACKAGE_LENGTH_INDEX];
   if (crc != calculate_crc(socket->rx_package + RX_PACKAGE_PACKAGE_TYPE_INDEX,
                            payload_length + RX_PACKAGE_HEADER_BYTES - 1)) {
-    LiFi_Socket_Nak(socket);
+    nak(socket);
     return;
   }
 
   memcpy(socket->rx_buffer, socket->rx_package + RX_PACKAGE_HEADER_BYTES, payload_length);
 
-  LiFi_Socket_Ack(socket);
+  ack(socket);
 }
 
 static bool is_received_received_package_confirmed(LiFi_Socket_t *socket) {
@@ -161,7 +176,7 @@ void on_package_received_process_confirmation(LiFi_Socket_t *socket) {
     if (socket->tx_bytes_processed < socket->tx_buffer_length) {
       transmit_package(socket);
     } else {
-      LiFi_Socket_EOT(socket);
+      eot(socket);
 
       if (socket->on_transmission_success_callback != NULL)
         socket->on_transmission_success_callback(socket);
@@ -268,20 +283,4 @@ bool LiFi_Socket_Read(LiFi_Socket_t *socket, uint8_t *buffer) {
 
   LiFi_Receiver_ReadBuffer(socket->receiver);
   return true;
-}
-
-// TODO: we don't need package_id as parameter, it is already in socket
-void LiFi_Socket_Ack(LiFi_Socket_t *socket) {
-  setup_transmission(socket, NULL, PACKAGE_TYPE_ACK, 0);
-  transmit_package(socket);
-}
-
-void LiFi_Socket_Nak(LiFi_Socket_t *socket) {
-  setup_transmission(socket, NULL, PACKAGE_TYPE_NAK, 0);
-  transmit_package(socket);
-}
-
-void LiFi_Socket_EOT(LiFi_Socket_t *socket) {
-  setup_transmission(socket, NULL, PACKAGE_TYPE_EOT, 0);
-  transmit_package(socket);
 }
