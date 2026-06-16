@@ -66,15 +66,8 @@ void LiFi_Socket_Init(LiFi_Socket_t *socket, LiFi_Transmitter_t *transmitter,
                       LiFi_Socket_onTransmissionSuccessfulCallback on_transmission_success_callback,
                       LiFi_Socket_onReceiveSuccessfulCallback on_receive_success_callback);
 
-void LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length);
+bool LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length);
 
-void LiFi_Socket_Read(LiFi_Socket_t *socket, uint8_t *buffer);
-
-// TODO: next functions can be static functions, not part of Public API
-void LiFi_Socket_Ack(LiFi_Socket_t *socket, uint8_t package_id);
-
-void LiFi_Socket_Nak(LiFi_Socket_t *socket, uint8_t package_id);
-
-void LiFi_Socket_EOT(LiFi_Socket_t *socket, uint8_t package_id);
+bool LiFi_Socket_Read(LiFi_Socket_t *socket, uint8_t *buffer);
 
 #endif
