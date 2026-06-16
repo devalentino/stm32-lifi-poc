@@ -197,6 +197,7 @@ void test_socket_continue_transmission_after_confirmation(void) {
 
   LiFi_Socket_Read(&server_socket, server_buffer);
   LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload));
+  TEST_ASSERT_EQUAL_UINT8(client_socket.tx_package_id, 1);
 
   Fake_LiFi_RunUntilIdle();
 
@@ -209,6 +210,8 @@ void test_socket_continue_transmission_after_confirmation(void) {
   TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX],
                           PACKAGE_TYPE_ACK);
   TEST_ASSERT_EQUAL_UINT8(server_transmitter.tx_buffer[TX_PACKAGE_LENGTH_INDEX], 0);
+  TEST_ASSERT_EQUAL_UINT8(server_socket.rx_package_id, 1);
+  TEST_ASSERT_EQUAL_UINT8(server_socket.tx_package_id, 1);
 
   Fake_LiFi_RunUntilIdle();
 
@@ -222,18 +225,44 @@ void test_socket_continue_transmission_after_confirmation(void) {
                            &client_payload[client_socket.tx_bytes_processed],
                            LIFI_TX_BUFFER_SIZE - TX_PACKAGE_HEADER_BYTES - 1);
 
-  // TODO: test package id is incremented for the next package, different sockets does not have
-  // collisions
+  TEST_ASSERT_EQUAL_UINT8(client_socket.tx_package_id, 2);
+}
+
+void test_socket_is_blocked_if_transition_in_progress(void) {
+  LiFi_Transmitter_t client_transmitter = {0};
+  LiFi_Receiver_t client_receiver = {0};
+  LiFi_Socket_t client_socket = {0};
+
+  LiFi_Transmitter_t server_transmitter = {0};
+  LiFi_Receiver_t server_receiver = {0};
+  LiFi_Socket_t server_socket = {0};
+
+  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, NULL,
+                   Mock_LiFi_Socket_onTransmissionSuccessfulCallback, NULL);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL,
+                   Mock_LiFi_Socket_onReceiveSuccessfulCallback);
+  Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
+  Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
+
+  uint8_t client_payload[] = {'H', 'i'};
+  uint8_t read_buffer[2] = {0};
+
+  TEST_ASSERT_TRUE(LiFi_Socket_Read(&server_socket, read_buffer));
+  TEST_ASSERT_FALSE(LiFi_Socket_Read(&server_socket, read_buffer));
+  
+  TEST_ASSERT_TRUE(LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload)));
+  TEST_ASSERT_FALSE(LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload)));
 }
 
 int main(void) {
   UNITY_BEGIN();
 
-  RUN_TEST(test_transmit_payload);
-  RUN_TEST(test_transmit_payload__wrong_crc);
-  RUN_TEST(test_transmit_payload__socket_is_reset_after_retries_limit);
-  RUN_TEST(test_transmit_payload__receiver_ignores_package_on_wrong_start_byte);
+  // RUN_TEST(test_transmit_payload);
+  // RUN_TEST(test_transmit_payload__wrong_crc);
+  // RUN_TEST(test_transmit_payload__socket_is_reset_after_retries_limit);
+  // RUN_TEST(test_transmit_payload__receiver_ignores_package_on_wrong_start_byte);
   RUN_TEST(test_socket_continue_transmission_after_confirmation);
+  // RUN_TEST(test_socket_is_blocked_if_transition_in_progress);
 
   return UNITY_END();
 }

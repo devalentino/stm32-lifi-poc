@@ -254,22 +254,28 @@ void LiFi_Socket_Init(LiFi_Socket_t *socket, LiFi_Transmitter_t *transmitter,
   socket->receiver->on_byte_received_callback_context = socket;
 }
 
-void LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length) {
+bool LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length) {
   if (socket->is_busy)
-    return;
+    return false;
 
   socket->is_busy = true;
   setup_transmission(socket, buffer, PACKAGE_TYPE_PAYLOAD, get_package_id(), length);
   transmit_package(socket);
+  return true;
 }
 
-void LiFi_Socket_Read(LiFi_Socket_t *socket, uint8_t *buffer) {
+bool LiFi_Socket_Read(LiFi_Socket_t *socket, uint8_t *buffer) {
+  if (socket->is_busy)
+    return false;
+
+  socket->is_busy = true;
   socket->rx_buffer = buffer;
   memset(socket->rx_package, 0, sizeof(socket->rx_package));
   socket->rx_package_bytes_received = 0;
   socket->rx_package_id = 0;
 
   LiFi_Receiver_ReadBuffer(socket->receiver);
+  return true;
 }
 
 // TODO: we don't need package_id as parameter, it is already in socket
