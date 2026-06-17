@@ -12,9 +12,28 @@ void HAL_Hardware_Factory_Init(void);
 TIM_HandleTypeDef transmitter_timer;
 TIM_HandleTypeDef receiver_timer;
 
-LiFi_Transmitter_t transmitter;
-LiFi_Receiver_t receiver;
-LiFi_Socket_t socket;
+LiFi_Transmitter_t client_transmitter;
+LiFi_Transmitter_t server_transmitter;
+LiFi_Receiver_t client_receiver;
+LiFi_Receiver_t server_receiver;
+LiFi_Socket_t client_socket;
+LiFi_Socket_t server_socket;
+
+
+static void on_error(LiFi_Socket_Error_t error, LiFi_Socket_t *socket)
+{
+  __NOP():
+}
+
+static void on_transmission_success(LiFi_Socket_t *socket)
+{
+  __NOP();
+}
+
+static void on_receive_success(LiFi_Socket_t *socket)
+{
+  __NOP();
+}
 
 
 int main(void)
@@ -22,9 +41,11 @@ int main(void)
   HAL_Init();
   SystemClock_Config();
 
-  LiFi_Transmitter_Init(&transmitter, &transmitter_timer, GPIOA, GPIO_PIN_5);
-  LiFi_Receiver_Init(&receiver, &receiver_timer, GPIOA, GPIO_PIN_1);
-  LiFi_Socket_Init(&socket, &transmitter, &receiver, NULL);
+  LiFi_Transmitter_Init(&client_transmitter, &transmitter_timer, GPIOA, GPIO_PIN_5);
+  LiFi_Receiver_Init(&server_receiver, &receiver_timer, GPIOA, GPIO_PIN_1);
+  
+  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, on_error, on_transmission_success, on_receive_success);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, on_error, on_transmission_success, on_receive_success);
 
   HAL_Hardware_Factory_Init();
 
@@ -35,7 +56,9 @@ int main(void)
   LiFi_Socket_Read(&socket, (uint8_t *) read_buffer);
 
   while (1) {
-    HAL_Delay(1000);
+    if (client_socket->is_tx_confirmation_required) {
+      
+    }
   }
 }
 

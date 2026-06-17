@@ -98,6 +98,17 @@ static void on_buffer_transmitted(void *context) {
   }
 }
 
+static void on_transmitter_timer(void *context) {
+  LiFi_Socket_t *socket = (LiFi_Socket_t *)context;
+
+  if (!socket->is_tx_confirmation_required) return;
+
+  if (socket->on_error_callback != NULL) {
+    socket->on_error_callback(LIFI_SOCKET_CONNECTION_ERROR, socket);
+  }
+  reset_socket(socket);
+}
+
 static void ack(LiFi_Socket_t *socket) {
   setup_transmission(socket, NULL, PACKAGE_TYPE_ACK, 0);
   transmit_package(socket);
@@ -256,6 +267,8 @@ void LiFi_Socket_Init(LiFi_Socket_t *socket, LiFi_Transmitter_t *transmitter,
   socket->transmitter = transmitter;
   socket->transmitter->on_buffer_transmitted = on_buffer_transmitted;
   socket->transmitter->on_buffer_transmitted_callback_context = socket;
+  socket->transmitter->on_timeout_callback = on_transmitter_timer;
+  socket->transmitter->on_timeout_callback_context = socket;
 
   socket->receiver = receiver;
   socket->receiver->on_byte_received = on_byte_received;

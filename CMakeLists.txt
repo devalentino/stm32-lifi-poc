@@ -21,6 +21,7 @@ option(LIFI_BUILD_TESTS "Build host-side unit tests" OFF)
     add_executable(test_integration
       Tests/integration/test_lifi_protocol.c
       Tests/fake/fake_lifi_transport.c
+      Tests/fake/fake_lifi_transmitter.c
       Sources/lifi_protocol.c
       External/unity/src/unity.c
     )

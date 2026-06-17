@@ -67,6 +67,10 @@ void LiFi_Transmitter_TransmitBuffer(LiFi_Transmitter_t *transmitter, const uint
 }
 
 void LiFi_Transmitter_TimerCallback(LiFi_Transmitter_t *transmitter) {
+  if (transmitter->on_timeout_callback != NULL && transmitter->on_timeout_callback != NULL) {
+    transmitter->on_timeout_callback(transmitter->on_timeout_callback_context);
+  }
+
   // buffer is fully sent, stop timer, disable laser and exit
   if (transmitter->current_half_bit_index == 16 &&
       transmitter->current_tx_byte_index == transmitter->tx_total_bytes) {

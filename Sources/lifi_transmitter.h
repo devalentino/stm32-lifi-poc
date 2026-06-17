@@ -11,6 +11,8 @@
 typedef void (*LiFi_Transmitter_BufferTransmittedCallback)(
     void *on_buffer_transmitted_callback_context);
 
+typedef void (*LIFi_Transmitter_TimeoutCallback)(void *on_timeout_callback_context);
+
 typedef struct {
   TIM_HandleTypeDef *htim;
   GPIO_TypeDef *gpio_port;
@@ -26,6 +28,9 @@ typedef struct {
 
   LiFi_Transmitter_BufferTransmittedCallback on_buffer_transmitted;
   void *on_buffer_transmitted_callback_context;
+
+  LIFi_Transmitter_TimeoutCallback on_timeout_callback;
+  void *on_timeout_callback_context;
 } LiFi_Transmitter_t;
 
 void LiFi_Transmitter_Init(LiFi_Transmitter_t *transmitter, TIM_HandleTypeDef *htim,
