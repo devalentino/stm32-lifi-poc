@@ -22,6 +22,7 @@ option(LIFI_BUILD_TESTS "Build host-side unit tests" OFF)
       Tests/integration/test_lifi_protocol.c
       Tests/fake/fake_lifi_transport.c
       Tests/fake/fake_lifi_transmitter.c
+      Tests/fake/fake_lifi_receiver.c
       Sources/lifi_protocol.c
       External/unity/src/unity.c
     )

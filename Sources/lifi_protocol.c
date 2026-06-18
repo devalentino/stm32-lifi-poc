@@ -98,10 +98,20 @@ static void on_buffer_transmitted(void *context) {
   }
 }
 
-static void on_transmitter_timer(void *context) {
+static void on_transmitter_timeout(void *context) {
   LiFi_Socket_t *socket = (LiFi_Socket_t *)context;
 
-  if (!socket->is_tx_confirmation_required) return;
+  if (!socket->is_tx_confirmation_required)
+    return;
+
+  if (socket->on_error_callback != NULL) {
+    socket->on_error_callback(LIFI_SOCKET_CONNECTION_ERROR, socket);
+  }
+  reset_socket(socket);
+}
+
+static void on_receiver_timer(void *context) {
+  LiFi_Socket_t *socket = (LiFi_Socket_t *)context;
 
   if (socket->on_error_callback != NULL) {
     socket->on_error_callback(LIFI_SOCKET_CONNECTION_ERROR, socket);
@@ -267,12 +277,14 @@ void LiFi_Socket_Init(LiFi_Socket_t *socket, LiFi_Transmitter_t *transmitter,
   socket->transmitter = transmitter;
   socket->transmitter->on_buffer_transmitted = on_buffer_transmitted;
   socket->transmitter->on_buffer_transmitted_callback_context = socket;
-  socket->transmitter->on_timeout_callback = on_transmitter_timer;
+  socket->transmitter->on_timeout_callback = on_transmitter_timeout;
   socket->transmitter->on_timeout_callback_context = socket;
 
   socket->receiver = receiver;
   socket->receiver->on_byte_received = on_byte_received;
   socket->receiver->on_byte_received_callback_context = socket;
+  socket->receiver->on_timeout_callback = on_receiver_timer;
+  socket->receiver->on_timeout_callback_context = socket;
 }
 
 bool LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length) {
