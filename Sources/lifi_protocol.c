@@ -243,6 +243,10 @@ void on_package_received(LiFi_Socket_t *socket) {
 static void on_byte_received(void *context) {
   LiFi_Socket_t *socket = (LiFi_Socket_t *)context;
 
+  if (!socket->is_busy) {
+    socket->is_busy = true;
+  }
+
   if (socket->rx_package_bytes_received == 0 && socket->receiver->rx_byte != START_BYTE) {
     return;
   }
@@ -301,7 +305,6 @@ bool LiFi_Socket_Read(LiFi_Socket_t *socket, uint8_t *buffer) {
   if (socket->is_busy)
     return false;
 
-  socket->is_busy = true;
   socket->rx_buffer = buffer;
   memset(socket->rx_package, 0, sizeof(socket->rx_package));
   socket->rx_package_bytes_received = 0;
