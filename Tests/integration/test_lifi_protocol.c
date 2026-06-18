@@ -228,32 +228,6 @@ void test_socket_continue_transmission_after_confirmation(void) {
   TEST_ASSERT_EQUAL_UINT8(client_socket.tx_package_id, 2);
 }
 
-void test_socket_is_blocked_if_transition_in_progress(void) {
-  LiFi_Transmitter_t client_transmitter = {0};
-  LiFi_Receiver_t client_receiver = {0};
-  LiFi_Socket_t client_socket = {0};
-
-  LiFi_Transmitter_t server_transmitter = {0};
-  LiFi_Receiver_t server_receiver = {0};
-  LiFi_Socket_t server_socket = {0};
-
-  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, NULL,
-                   Mock_LiFi_Socket_onTransmissionSuccessfulCallback, NULL);
-  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL,
-                   Mock_LiFi_Socket_onReceiveSuccessfulCallback);
-  Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
-  Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
-
-  uint8_t client_payload[] = {'H', 'i'};
-  uint8_t read_buffer[2] = {0};
-
-  TEST_ASSERT_TRUE(LiFi_Socket_Read(&server_socket, read_buffer));
-  TEST_ASSERT_FALSE(LiFi_Socket_Read(&server_socket, read_buffer));
-
-  TEST_ASSERT_TRUE(LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload)));
-  TEST_ASSERT_FALSE(LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload)));
-}
-
 void test_transmit_payload__confirmation_timeout(void) {
   LiFi_Transmitter_t client_transmitter = {0};
   LiFi_Receiver_t client_receiver = {0};
@@ -328,6 +302,61 @@ void test_receive_payload__connection_timeout(void) {
   TEST_ASSERT_FALSE(server_socket.is_busy);
 }
 
+void test_transmit_payload__cant_transmit_to_the_busy_socket(void) {
+  LiFi_Transmitter_t client_transmitter = {0};
+  LiFi_Receiver_t client_receiver = {0};
+  LiFi_Socket_t client_socket = {0};
+
+  LiFi_Transmitter_t server_transmitter = {0};
+  LiFi_Receiver_t server_receiver = {0};
+  LiFi_Socket_t server_socket = {0};
+
+  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver,
+                   Mock_LiFi_Socket_onErrorCallback, NULL, NULL);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL);
+  Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
+  Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
+
+  uint8_t client_payload[] = {'H', 'i'};
+  uint8_t another_client_payload[] = {'W', 'a', 't', '?'};
+  uint8_t read_buffer[2] = {0};
+
+  LiFi_Socket_Read(&server_socket, read_buffer);
+  LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload));
+
+  TEST_ASSERT_FALSE(
+      LiFi_Socket_Send(&client_socket, another_client_payload, sizeof(another_client_payload)));
+}
+
+void test_receive_payload__not_busy_on_read(void) {
+  LiFi_Transmitter_t client_transmitter = {0};
+  LiFi_Receiver_t client_receiver = {0};
+  LiFi_Socket_t client_socket = {0};
+
+  LiFi_Transmitter_t server_transmitter = {0};
+  LiFi_Receiver_t server_receiver = {0};
+  LiFi_Socket_t server_socket = {0};
+
+  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver,
+                   Mock_LiFi_Socket_onErrorCallback, NULL, NULL);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL);
+  Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
+  Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
+
+  uint8_t client_payload[] = {'H', 'i'};
+  uint8_t read_buffer[2] = {0};
+
+  TEST_ASSERT_TRUE(LiFi_Socket_Read(&server_socket, read_buffer));
+  TEST_ASSERT_TRUE(LiFi_Socket_Read(&server_socket, read_buffer));
+  TEST_ASSERT_FALSE(server_socket.is_busy);
+
+  LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload));
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_FALSE(LiFi_Socket_Read(&server_socket, read_buffer));
+  TEST_ASSERT_TRUE(server_socket.is_busy);
+}
+
 int main(void) {
   UNITY_BEGIN();
 
@@ -336,9 +365,10 @@ int main(void) {
   RUN_TEST(test_transmit_payload__socket_is_reset_after_retries_limit);
   RUN_TEST(test_transmit_payload__receiver_ignores_package_on_wrong_start_byte);
   RUN_TEST(test_socket_continue_transmission_after_confirmation);
-  RUN_TEST(test_socket_is_blocked_if_transition_in_progress);
   RUN_TEST(test_transmit_payload__confirmation_timeout);
   RUN_TEST(test_receive_payload__connection_timeout);
+  RUN_TEST(test_transmit_payload__cant_transmit_to_the_busy_socket);
+  RUN_TEST(test_receive_payload__not_busy_on_read);
 
   return UNITY_END();
 }
