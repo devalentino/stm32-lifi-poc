@@ -323,8 +323,9 @@ void test_transmit_payload__cant_transmit_to_the_busy_socket(void) {
 
   LiFi_Socket_Read(&server_socket, read_buffer);
   LiFi_Socket_Send(&client_socket, client_payload, sizeof(client_payload));
-  
-  TEST_ASSERT_FALSE(LiFi_Socket_Send(&client_socket, another_client_payload, sizeof(another_client_payload)));
+
+  TEST_ASSERT_FALSE(
+      LiFi_Socket_Send(&client_socket, another_client_payload, sizeof(another_client_payload)));
 }
 
 void test_receive_payload__not_busy_on_read(void) {
