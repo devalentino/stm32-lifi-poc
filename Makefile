@@ -11,7 +11,6 @@ FORMAT_EXTENSIONS := -name '*.c' -o -name '*.h'
 FORMAT_EXCLUDES := \
 	! -path 'Sources/stm32f4xx_hal_conf.h' \
 	! -path 'Sources/system_stm32f4xx.c' \
-	! -path 'Sources/main.c' \
 	! -path 'Sources/syscalls.c' \
 	! -path 'Sources/sysmem.c' \
 	! -path 'Tests/fake/stm32f4xx_hal.h'

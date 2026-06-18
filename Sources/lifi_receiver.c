@@ -69,3 +69,9 @@ void LiFi_Receiver_GPIO_Callback(LiFi_Receiver_t *receiver) {
     }
   }
 }
+
+void LiFi_Receiver_TimerCallback(LiFi_Receiver_t *receiver) {
+  if (receiver->on_timeout != NULL && receiver->on_timeout_context) {
+    receiver->on_timeout(receiver->on_timeout_context);
+  }
+}

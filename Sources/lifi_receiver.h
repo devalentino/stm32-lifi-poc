@@ -9,6 +9,7 @@
 #define START_BYTE 0x7E
 
 typedef void (*LiFi_Receiver_ByteReceivedCallback)(void *on_byte_received_callback_context);
+typedef void (*LIFi_Receiver_TimeoutCallback)(void *on_timeout_callback_context);
 
 typedef struct {
   TIM_HandleTypeDef *htim;
@@ -22,6 +23,9 @@ typedef struct {
 
   LiFi_Receiver_ByteReceivedCallback on_byte_received;
   void *on_byte_received_callback_context;
+
+  LIFi_Receiver_TimeoutCallback on_timeout_callback;
+  void *on_timeout_callback_context;
 } LiFi_Receiver_t;
 
 void LiFi_Receiver_Init(LiFi_Receiver_t *receiver, TIM_HandleTypeDef *htim, GPIO_TypeDef *port,
@@ -30,5 +34,7 @@ void LiFi_Receiver_Init(LiFi_Receiver_t *receiver, TIM_HandleTypeDef *htim, GPIO
 void LiFi_Receiver_ReadBuffer(LiFi_Receiver_t *receiver);
 
 void LiFi_Receiver_GPIO_Callback(LiFi_Receiver_t *receiver);
+
+void LiFi_Receiver_TimerCallback(LiFi_Receiver_t *receiver);
 
 #endif
