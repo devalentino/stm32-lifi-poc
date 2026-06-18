@@ -35,27 +35,9 @@ int main(void) {
   HAL_Init();
   SystemClock_Config();
 
-  LiFi_Transmitter_Init(&client_transmitter, &transmitter_timer, GPIOA, GPIO_PIN_5);
-  LiFi_Receiver_Init(&server_receiver, &receiver_timer, GPIOA, GPIO_PIN_1);
-
-  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, on_error,
-                   on_transmission_success, on_receive_success);
-  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, on_error,
-                   on_transmission_success, on_receive_success);
-
-  HAL_Hardware_Factory_Init();
-
-  char content[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
-                   "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis "
-                   "nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat";
-  char read_buffer[256] = {0};
-
-  LiFi_Socket_Send(&socket, (uint8_t *)content, strlen(content));
-  LiFi_Socket_Read(&socket, (uint8_t *)read_buffer);
-
   while (1) {
-    if (client_socket->is_tx_confirmation_required) {
-    }
+    // TODO: initialize sockets and wait for messages
+    HAL_Delay(1000);
   }
 }
 
