@@ -11,13 +11,11 @@ void HAL_Hardware_Factory_Init(void);
 
 TIM_HandleTypeDef transmitter_timer;
 TIM_HandleTypeDef receiver_timer;
+UART_HandleTypeDef uart;
 
 LiFi_Transmitter_t transmitter;
-LiFi_Transmitter_t server_transmitter;
-LiFi_Receiver_t client_receiver;
-LiFi_Receiver_t server_receiver;
-LiFi_Socket_t client_socket;
-LiFi_Socket_t server_socket;
+LiFi_Receiver_t receiver;
+LiFi_Socket_t socket;
 
 static void on_error(LiFi_Socket_Error_t error, LiFi_Socket_t *socket) {
   __NOP() :
@@ -69,6 +67,8 @@ void HAL_Hardware_Factory_Init(void) {
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_TIM2_CLK_ENABLE();
   __HAL_RCC_TIM3_CLK_ENABLE();
+  __HAL_RCC_USART2_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
   __HAL_RCC_SYSCFG_CLK_ENABLE();
 
   // GPIOA transmitter setup
@@ -111,6 +111,12 @@ void HAL_Hardware_Factory_Init(void) {
 
     HAL_NVIC_SetPriority(EXTI1_IRQn, 3, 0);
     HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+  }
+
+  // UART configuration
+  {
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin = GPIO_PIN_2 | GPIO_PIN_3;
   }
 }
 
