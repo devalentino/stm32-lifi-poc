@@ -30,7 +30,7 @@ typedef struct {
   void *on_buffer_received_callback_context;
 } LiFi_HostInterface_t;
 
-void LiFi_HostInterface_Init(LiFi_HostInterface_t *host_interface, UART_HandleTypeDef *huart);
+void LiFi_HostInterface_Init(LiFi_HostInterface_t *host_interface, UART_HandleTypeDef *huart, uint8_t *tx_buffer, uint8_t *rx_buffer);
 
 void LiFi_HostInterface_onReceiveSuccessfulCallback(LiFi_HostInterface_t *host_interface, uint8_t length);
 

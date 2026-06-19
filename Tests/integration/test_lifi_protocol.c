@@ -4,6 +4,7 @@
 #include "fake_lifi_transport.h"
 #include "fff.h"
 #include "lifi_protocol.h"
+#include "test_suites.h"
 #include "unity.h"
 
 DEFINE_FFF_GLOBALS;
@@ -357,9 +358,7 @@ void test_receive_payload__not_busy_on_read(void) {
   TEST_ASSERT_TRUE(server_socket.is_busy);
 }
 
-int main(void) {
-  UNITY_BEGIN();
-
+void Test_LiFi_Protocol_Run(void) {
   RUN_TEST(test_transmit_payload);
   RUN_TEST(test_transmit_payload__wrong_crc);
   RUN_TEST(test_transmit_payload__socket_is_reset_after_retries_limit);
@@ -369,6 +368,4 @@ int main(void) {
   RUN_TEST(test_receive_payload__connection_timeout);
   RUN_TEST(test_transmit_payload__cant_transmit_to_the_busy_socket);
   RUN_TEST(test_receive_payload__not_busy_on_read);
-
-  return UNITY_END();
 }

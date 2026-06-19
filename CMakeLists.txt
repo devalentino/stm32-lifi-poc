@@ -19,7 +19,9 @@ option(LIFI_BUILD_TESTS "Build host-side unit tests" OFF)
     enable_testing()
 
     add_executable(test_integration
+      Tests/integration/test_runner.c
       Tests/integration/test_lifi_protocol.c
+      Tests/integration/test_lifi_modem.c
       Tests/fake/fake_lifi_transport.c
       Tests/fake/fake_lifi_transmitter.c
       Tests/fake/fake_lifi_receiver.c
