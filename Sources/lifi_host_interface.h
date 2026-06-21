@@ -1,16 +1,16 @@
 #ifndef LIFI_HOST_INTERFACE_H
 #define LIFI_HOST_INTERFACE_H
 
-#include <stdint.h>
 #include "stm32f4xx_hal.h"
+#include <stdint.h>
 
 typedef void (*LiFi_HostInterface_BufferReceivedCallback)(
     void *on_buffer_received_callback_context);
 
 typedef enum {
-    HOST_INTERFACE_IDLE = 0x00,
-    HOST_INTERFACE_RECEIVE = 0x01,
-    HOST_INTERFACE_TRANSMIT = 0x02
+  HOST_INTERFACE_IDLE = 0x00,
+  HOST_INTERFACE_RECEIVE = 0x01,
+  HOST_INTERFACE_TRANSMIT = 0x02
 } LiFi_HostInterface_State_t;
 
 typedef struct {
@@ -30,10 +30,14 @@ typedef struct {
   void *on_buffer_received_callback_context;
 } LiFi_HostInterface_t;
 
-void LiFi_HostInterface_Init(LiFi_HostInterface_t *host_interface, UART_HandleTypeDef *huart, uint8_t *tx_buffer, uint8_t *rx_buffer);
+void LiFi_HostInterface_Init(LiFi_HostInterface_t *host_interface, UART_HandleTypeDef *huart,
+                             uint8_t *tx_buffer, uint8_t *rx_buffer);
 
 void LiFi_HostInterface_Send(LiFi_HostInterface_t *host_interface);
 
-void LiFi_HostInterface_onReceiveSuccessfulCallback(LiFi_HostInterface_t *host_interface, uint8_t length);
+void LiFi_HostInterface_onUartTransmitterEmptyCallback(LiFi_HostInterface_t *host_interface);
+
+void LiFi_HostInterface_onUartDataReceivedCallback(LiFi_HostInterface_t *host_interface,
+                                                   uint8_t length, uint8_t buffer_shift);
 
 #endif
