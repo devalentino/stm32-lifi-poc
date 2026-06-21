@@ -1,9 +1,10 @@
 #include "lifi_modem.h"
 
 static void on_host_interface_buffer_received(void *context) {
-    LiFi_Modem_t modem = (LiFi_Modem_t) context;
+    LiFi_Modem_t *modem = (LiFi_Modem_t *)context;
 
     // TODO: send XON, call modem to transmit buffer through LiFi
+    (void)modem;
 }
 
 void LiFi_Modem_Init(LiFi_Modem_t *modem, LiFi_HostInterface_t *host_interface, LiFi_Socket_t *socket) {

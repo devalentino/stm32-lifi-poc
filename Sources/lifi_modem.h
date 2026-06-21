@@ -1,9 +1,8 @@
 #ifndef LIFI_MODEM_H
 #define LIFI_MODEM_H
 
-#include "lifi_protocol.h";
-#include "lifi_socket.h";
-#include "lifi_host_interface.h";
+#include "lifi_protocol.h"
+#include "lifi_host_interface.h"
 
 typedef struct {
   LiFi_HostInterface_t *host_interface;

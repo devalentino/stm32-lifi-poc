@@ -1,5 +1,5 @@
+#include <stddef.h>
 #include "lifi_host_interface.h"
-#include "lifi_host_inreface.h"
 
 void LiFi_HostInterface_Init(LiFi_HostInterface_t *host_interface, UART_HandleTypeDef *huart, uint8_t *tx_buffer, uint8_t *rx_buffer) {
     host_interface->huart = huart;
@@ -7,6 +7,10 @@ void LiFi_HostInterface_Init(LiFi_HostInterface_t *host_interface, UART_HandleTy
 
     host_interface->tx_buffer = tx_buffer;
     host_interface->rx_buffer = rx_buffer;
+}
+
+void LiFi_HostInterface_Send(LiFi_HostInterface_t *host_interface) {
+    
 }
 
 void LiFi_HostInterface_onReceiveSuccessfulCallback(LiFi_HostInterface_t *host_interface, uint8_t length) {
