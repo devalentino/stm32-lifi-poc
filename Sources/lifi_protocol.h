@@ -33,9 +33,9 @@ typedef enum { LIFI_SOCKET_CONNECTION_ERROR } LiFi_Socket_Error_t;
 
 typedef struct LiFi_Socket_t LiFi_Socket_t;
 
-typedef void (*LiFi_Socket_onErrorCallback)(LiFi_Socket_Error_t error, LiFi_Socket_t *socket);
-typedef void (*LiFi_Socket_onTransmissionSuccessfulCallback)(LiFi_Socket_t *socket);
-typedef void (*LiFi_Socket_onReceiveSuccessfulCallback)(LiFi_Socket_t *socket);
+typedef void (*LiFi_Socket_onErrorCallback)(LiFi_Socket_Error_t error, void *context);
+typedef void (*LiFi_Socket_onTransmissionSuccessfulCallback)(void *context);
+typedef void (*LiFi_Socket_onReceiveSuccessfulCallback)(void *context);
 
 struct LiFi_Socket_t {
   LiFi_Transmitter_t *transmitter;
@@ -43,8 +43,11 @@ struct LiFi_Socket_t {
 
   bool is_busy;
   LiFi_Socket_onErrorCallback on_error_callback;
+  void *on_error_callback_context;
   LiFi_Socket_onTransmissionSuccessfulCallback on_transmission_success_callback;
+  void *on_transmission_success_callback_context;
   LiFi_Socket_onReceiveSuccessfulCallback on_receive_success_callback;
+  void *on_receive_success_callback_context;
 
   uint8_t *tx_buffer;
   uint8_t tx_buffer_length;
@@ -63,8 +66,11 @@ struct LiFi_Socket_t {
 
 void LiFi_Socket_Init(LiFi_Socket_t *socket, LiFi_Transmitter_t *transmitter,
                       LiFi_Receiver_t *receiver, LiFi_Socket_onErrorCallback on_error_callback,
+                      void *on_error_callback_context,
                       LiFi_Socket_onTransmissionSuccessfulCallback on_transmission_success_callback,
-                      LiFi_Socket_onReceiveSuccessfulCallback on_receive_success_callback);
+                      void *on_transmission_success_callback_context,
+                      LiFi_Socket_onReceiveSuccessfulCallback on_receive_success_callback,
+                      void *on_receive_success_callback_context);
 
 bool LiFi_Socket_Send(LiFi_Socket_t *socket, uint8_t *buffer, uint8_t length);
 

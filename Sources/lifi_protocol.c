@@ -105,7 +105,7 @@ static void on_transmitter_timeout(void *context) {
     return;
 
   if (socket->on_error_callback != NULL) {
-    socket->on_error_callback(LIFI_SOCKET_CONNECTION_ERROR, socket);
+    socket->on_error_callback(LIFI_SOCKET_CONNECTION_ERROR, socket->on_error_callback_context);
   }
   reset_socket(socket);
 }
@@ -113,8 +113,8 @@ static void on_transmitter_timeout(void *context) {
 static void on_receiver_timer(void *context) {
   LiFi_Socket_t *socket = (LiFi_Socket_t *)context;
 
-  if (socket->on_error_callback != NULL) {
-    socket->on_error_callback(LIFI_SOCKET_CONNECTION_ERROR, socket);
+  if (socket->on_error_callback != NULL && socket->on_error_callback_context) {
+    socket->on_error_callback(LIFI_SOCKET_CONNECTION_ERROR, socket->on_error_callback_context);
   }
   reset_socket(socket);
 }
@@ -200,8 +200,9 @@ void on_package_received_process_confirmation(LiFi_Socket_t *socket) {
     } else {
       eot(socket);
 
-      if (socket->on_transmission_success_callback != NULL)
-        socket->on_transmission_success_callback(socket);
+      if (socket->on_transmission_success_callback != NULL &&
+          socket->on_transmission_success_callback_context != NULL)
+        socket->on_transmission_success_callback(socket->on_transmission_success_callback_context);
     }
   } else {
     socket->tx_retries_count++;
@@ -209,8 +210,8 @@ void on_package_received_process_confirmation(LiFi_Socket_t *socket) {
     if (socket->tx_retries_count < MAX_TRANSMIT_RETRIES_COUNT) {
       transmit_package(socket);
     } else {
-      if (socket->on_error_callback != NULL) {
-        socket->on_error_callback(LIFI_SOCKET_CONNECTION_ERROR, socket);
+      if (socket->on_error_callback != NULL && socket->on_error_callback_context) {
+        socket->on_error_callback(LIFI_SOCKET_CONNECTION_ERROR, socket->on_error_callback_context);
       }
       reset_socket(socket);
     }
@@ -218,8 +219,9 @@ void on_package_received_process_confirmation(LiFi_Socket_t *socket) {
 }
 
 void on_package_received_process_end_of_transmission(LiFi_Socket_t *socket) {
-  if (socket->on_receive_success_callback != NULL)
-    socket->on_receive_success_callback(socket);
+  if (socket->on_receive_success_callback != NULL &&
+      socket->on_receive_success_callback_context != NULL)
+    socket->on_receive_success_callback(socket->on_receive_success_callback_context);
 }
 
 void on_package_received(LiFi_Socket_t *socket) {
@@ -269,12 +271,18 @@ static void on_byte_received(void *context) {
 
 void LiFi_Socket_Init(LiFi_Socket_t *socket, LiFi_Transmitter_t *transmitter,
                       LiFi_Receiver_t *receiver, LiFi_Socket_onErrorCallback on_error_callback,
+                      void *on_error_callback_context,
                       LiFi_Socket_onTransmissionSuccessfulCallback on_transmission_success_callback,
-                      LiFi_Socket_onReceiveSuccessfulCallback on_receive_success_callback) {
+                      void *on_transmission_success_callback_context,
+                      LiFi_Socket_onReceiveSuccessfulCallback on_receive_success_callback,
+                      void *on_receive_success_callback_context) {
   socket->is_busy = false;
   socket->on_error_callback = on_error_callback;
+  socket->on_error_callback_context = on_error_callback_context;
   socket->on_transmission_success_callback = on_transmission_success_callback;
+  socket->on_transmission_success_callback_context = on_transmission_success_callback_context;
   socket->on_receive_success_callback = on_receive_success_callback;
+  socket->on_receive_success_callback_context = on_receive_success_callback_context;
 
   socket->is_tx_confirmation_required = false;
 

@@ -11,9 +11,9 @@ DEFINE_FFF_GLOBALS;
 
 FAKE_VOID_FUNC(LiFi_Transmitter_TransmitBuffer, LiFi_Transmitter_t *, const uint8_t *, uint8_t);
 FAKE_VOID_FUNC(LiFi_Transmitter_ToConfirmationMode, LiFi_Transmitter_t *);
-FAKE_VOID_FUNC(Mock_LiFi_Socket_onErrorCallback, LiFi_Socket_Error_t, LiFi_Socket_t *);
-FAKE_VOID_FUNC(Mock_LiFi_Socket_onTransmissionSuccessfulCallback, LiFi_Socket_t *);
-FAKE_VOID_FUNC(Mock_LiFi_Socket_onReceiveSuccessfulCallback, LiFi_Socket_t *);
+FAKE_VOID_FUNC(Mock_LiFi_Socket_onErrorCallback, LiFi_Socket_Error_t, void *);
+FAKE_VOID_FUNC(Mock_LiFi_Socket_onTransmissionSuccessfulCallback, void *);
+FAKE_VOID_FUNC(Mock_LiFi_Socket_onReceiveSuccessfulCallback, void *);
 
 void setUp(void) {
   RESET_FAKE(LiFi_Transmitter_TransmitBuffer);
@@ -39,10 +39,10 @@ void test_transmit_payload(void) {
   LiFi_Receiver_t server_receiver = {0};
   LiFi_Socket_t server_socket = {0};
 
-  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, NULL,
-                   Mock_LiFi_Socket_onTransmissionSuccessfulCallback, NULL);
-  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL,
-                   Mock_LiFi_Socket_onReceiveSuccessfulCallback);
+  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, NULL, NULL,
+                   Mock_LiFi_Socket_onTransmissionSuccessfulCallback, &client_socket, NULL, NULL);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL, NULL,
+                   Mock_LiFi_Socket_onReceiveSuccessfulCallback, &server_socket);
   Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
   Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
 
@@ -79,8 +79,10 @@ void test_transmit_payload__wrong_crc(void) {
   LiFi_Receiver_t server_receiver = {0};
   LiFi_Socket_t server_socket = {0};
 
-  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, NULL, NULL, NULL);
-  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL);
+  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, NULL, NULL, NULL, NULL,
+                   NULL, NULL);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL, NULL,
+                   NULL, NULL);
   Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
   Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
 
@@ -118,8 +120,9 @@ void test_transmit_payload__socket_is_reset_after_retries_limit(void) {
   LiFi_Socket_t server_socket = {0};
 
   LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver,
-                   Mock_LiFi_Socket_onErrorCallback, NULL, NULL);
-  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL);
+                   Mock_LiFi_Socket_onErrorCallback, &client_socket, NULL, NULL, NULL, NULL);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL, NULL,
+                   NULL, NULL);
   Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
   Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
 
@@ -156,8 +159,10 @@ void test_transmit_payload__receiver_ignores_package_on_wrong_start_byte(void) {
   LiFi_Receiver_t server_receiver = {0};
   LiFi_Socket_t server_socket = {0};
 
-  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, NULL, NULL, NULL);
-  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL);
+  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, NULL, NULL, NULL, NULL,
+                   NULL, NULL);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL, NULL,
+                   NULL, NULL);
   Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
   Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
 
@@ -183,8 +188,10 @@ void test_socket_continue_transmission_after_confirmation(void) {
   LiFi_Receiver_t server_receiver = {0};
   LiFi_Socket_t server_socket = {0};
 
-  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, NULL, NULL, NULL);
-  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL);
+  LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver, NULL, NULL, NULL, NULL,
+                   NULL, NULL);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL, NULL,
+                   NULL, NULL);
   Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
   Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
 
@@ -239,8 +246,9 @@ void test_transmit_payload__confirmation_timeout(void) {
   LiFi_Socket_t server_socket = {0};
 
   LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver,
-                   Mock_LiFi_Socket_onErrorCallback, NULL, NULL);
-  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL);
+                   Mock_LiFi_Socket_onErrorCallback, &client_socket, NULL, NULL, NULL, NULL);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL, NULL,
+                   NULL, NULL);
   Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
   Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
 
@@ -279,8 +287,9 @@ void test_receive_payload__connection_timeout(void) {
   LiFi_Socket_t server_socket = {0};
 
   LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver,
-                   Mock_LiFi_Socket_onErrorCallback, NULL, NULL);
-  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL);
+                   Mock_LiFi_Socket_onErrorCallback, &client_socket, NULL, NULL, NULL, NULL);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL, NULL,
+                   NULL, NULL);
   Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
   Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
 
@@ -313,8 +322,9 @@ void test_transmit_payload__cant_transmit_to_the_busy_socket(void) {
   LiFi_Socket_t server_socket = {0};
 
   LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver,
-                   Mock_LiFi_Socket_onErrorCallback, NULL, NULL);
-  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL);
+                   Mock_LiFi_Socket_onErrorCallback, &client_socket, NULL, NULL, NULL, NULL);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL, NULL,
+                   NULL, NULL);
   Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
   Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
 
@@ -339,8 +349,9 @@ void test_receive_payload__not_busy_on_read(void) {
   LiFi_Socket_t server_socket = {0};
 
   LiFi_Socket_Init(&client_socket, &client_transmitter, &client_receiver,
-                   Mock_LiFi_Socket_onErrorCallback, NULL, NULL);
-  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL);
+                   Mock_LiFi_Socket_onErrorCallback, &client_socket, NULL, NULL, NULL, NULL);
+  LiFi_Socket_Init(&server_socket, &server_transmitter, &server_receiver, NULL, NULL, NULL, NULL,
+                   NULL, NULL);
   Fake_LiFi_Link_Register(&client_transmitter, &server_receiver);
   Fake_LiFi_Link_Register(&server_transmitter, &client_receiver);
 

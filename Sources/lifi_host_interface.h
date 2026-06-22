@@ -24,6 +24,7 @@ typedef struct {
 
   uint8_t *rx_buffer;
   uint8_t rx_buffer_length;
+  uint8_t rx_buffer_shift;
   uint8_t rx_bytes_received;
 
   LiFi_HostInterface_BufferReceivedCallback on_buffer_received_callback;
@@ -34,8 +35,6 @@ void LiFi_HostInterface_Init(LiFi_HostInterface_t *host_interface, UART_HandleTy
                              uint8_t *tx_buffer, uint8_t *rx_buffer);
 
 void LiFi_HostInterface_ConsumeData(LiFi_HostInterface_t *host_interface);
-
-void LiFi_HostInterface_onUartTransmitterEmptyCallback(LiFi_HostInterface_t *host_interface);
 
 void LiFi_HostInterface_onUartDataReceivedCallback(LiFi_HostInterface_t *host_interface,
                                                    uint8_t length, uint8_t buffer_shift);
