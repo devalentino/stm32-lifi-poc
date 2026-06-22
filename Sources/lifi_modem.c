@@ -3,8 +3,7 @@
 static void on_host_interface_buffer_received(void *context) {
   LiFi_Modem_t *modem = (LiFi_Modem_t *)context;
 
-  // TODO: send XON, call modem to transmit buffer through LiFi
-  (void)modem;
+  LiFi_Socket_Send(modem->socket, );
 }
 
 void LiFi_Modem_Init(LiFi_Modem_t *modem, LiFi_HostInterface_t *host_interface,
@@ -14,4 +13,12 @@ void LiFi_Modem_Init(LiFi_Modem_t *modem, LiFi_HostInterface_t *host_interface,
 
   host_interface->on_buffer_received_callback = on_host_interface_buffer_received;
   host_interface->on_buffer_received_callback_context = modem;
+}
+
+void LiFi_Modem_onLiFiTransmittionSuccessfullCallback(void *context) {
+
+}
+
+void LiFi_Model_onLiFiTransmissionErrorCallback(void *context) {
+  
 }

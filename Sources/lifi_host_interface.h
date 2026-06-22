@@ -33,7 +33,7 @@ typedef struct {
 void LiFi_HostInterface_Init(LiFi_HostInterface_t *host_interface, UART_HandleTypeDef *huart,
                              uint8_t *tx_buffer, uint8_t *rx_buffer);
 
-void LiFi_HostInterface_Send(LiFi_HostInterface_t *host_interface);
+void LiFi_HostInterface_ConsumeData(LiFi_HostInterface_t *host_interface);
 
 void LiFi_HostInterface_onUartTransmitterEmptyCallback(LiFi_HostInterface_t *host_interface);
 
