@@ -16,14 +16,14 @@ TIM_HandleTypeDef receiver_timer;
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
 
-LiFi_Transmitter_t transmitter;
-LiFi_Receiver_t receiver;
-LiFi_Socket_t socket;
+volatile LiFi_Transmitter_t transmitter;
+volatile LiFi_Receiver_t receiver;
+volatile LiFi_Socket_t socket;
 
 uint16_t HOST_INTERFACE_RX_BUFFER_SIZE = 512;
-host_interface_tx_buffer[HOST_INTERFACE_RX_BUFFER_SIZE];
-LiFi_HostInterface_t host_interface;
-LiFi_Modem_t modem;
+uint8_t host_interface_tx_buffer[HOST_INTERFACE_RX_BUFFER_SIZE];
+volatile LiFi_HostInterface_t host_interface;
+volatile LiFi_Modem_t modem;
 
 static void on_error(LiFi_Socket_Error_t error, LiFi_Socket_t *socket) {
   __NOP() :
