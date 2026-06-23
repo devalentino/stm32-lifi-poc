@@ -23,10 +23,24 @@
 #define RX_PACKAGE_HEADER_BYTES 4
 
 typedef enum {
-  PACKAGE_TYPE_ACK = 0x56,
-  PACKAGE_TYPE_NAK = 0x57,
-  PACKAGE_TYPE_PAYLOAD = 0x58,
-  PACKAGE_TYPE_EOT = 0x59
+  LIFI_SOCKET_IDLE = 0x00,
+  LIFI_SOCKET_TRANSMITTING = 0x01,
+  LIFI_SOCKET_WAITING_CONFIRMATION = 0x02,
+  LIFI_SOCKET_WAITING_READY = 0x03,
+  LIFI_SOCKET_WAITING_FOR_CONSUMER = 0x04,
+  LIFI_SOCKET_RECEIVING = 0x05,
+  LIFI_SOCKET_SENDING_CONTROL = 0x06
+} LiFi_Socket_State_t;
+
+typedef enum {
+  PACKAGE_TYPE_ACK_READY = 0x56,
+  PACKAGE_TYPE_ACK_BUSY = 0x57,
+  PACKAGE_TYPE_NAK = 0x58,
+  PACKAGE_TYPE_PAYLOAD = 0x59,
+  PACKAGE_TYPE_EOT = 0x60,
+  PACKAGE_TYPE_STATUS = 0x61,
+  PACKAGE_TYPE_BUSY = 0x62,
+  PACKAGE_TYPE_READY = 0x63,
 } PackageType_t;
 
 typedef enum { LIFI_SOCKET_CONNECTION_ERROR } LiFi_Socket_Error_t;
@@ -41,7 +55,8 @@ struct LiFi_Socket_t {
   LiFi_Transmitter_t *transmitter;
   LiFi_Receiver_t *receiver;
 
-  bool is_busy;
+  LiFi_Socket_State_t state;
+
   LiFi_Socket_onErrorCallback on_error_callback;
   void *on_error_callback_context;
   LiFi_Socket_onTransmissionSuccessfulCallback on_transmission_success_callback;
@@ -54,11 +69,10 @@ struct LiFi_Socket_t {
   uint8_t tx_bytes_processed;
   uint8_t tx_package[LIFI_TX_BUFFER_SIZE];
   uint8_t tx_package_id;
-  uint8_t tx_package_type;
   uint8_t tx_retries_count;
-  bool is_tx_confirmation_required;
 
   uint8_t *rx_buffer;
+  uint8_t rx_bytes_received;
   uint8_t rx_package[LIFI_TX_BUFFER_SIZE];
   uint8_t rx_package_id;
   uint8_t rx_package_bytes_received;

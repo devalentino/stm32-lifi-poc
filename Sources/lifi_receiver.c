@@ -15,6 +15,8 @@ void LiFi_Receiver_Init(LiFi_Receiver_t *receiver, TIM_HandleTypeDef *htim, GPIO
   receiver->is_first_half = true;
   receiver->on_byte_received = NULL;
   receiver->on_byte_received_callback_context = NULL;
+  receiver->on_timeout_callback = NULL;
+  receiver->on_timeout_callback_context = NULL;
 }
 
 void LiFi_Receiver_ReadBuffer(LiFi_Receiver_t *receiver) {
@@ -71,7 +73,7 @@ void LiFi_Receiver_GPIO_Callback(LiFi_Receiver_t *receiver) {
 }
 
 void LiFi_Receiver_TimerCallback(LiFi_Receiver_t *receiver) {
-  if (receiver->on_timeout != NULL && receiver->on_timeout_context) {
-    receiver->on_timeout(receiver->on_timeout_context);
+  if (receiver->on_timeout_callback != NULL && receiver->on_timeout_callback_context != NULL) {
+    receiver->on_timeout_callback(receiver->on_timeout_callback_context);
   }
 }

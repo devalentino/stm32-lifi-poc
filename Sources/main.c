@@ -16,30 +16,47 @@ TIM_HandleTypeDef receiver_timer;
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
 
-volatile LiFi_Transmitter_t transmitter;
-volatile LiFi_Receiver_t receiver;
-volatile LiFi_Socket_t socket;
+LiFi_Transmitter_t transmitter;
+LiFi_Receiver_t receiver;
+LiFi_Socket_t socket;
 
-uint16_t HOST_INTERFACE_RX_BUFFER_SIZE = 512;
-uint8_t host_interface_tx_buffer[HOST_INTERFACE_RX_BUFFER_SIZE];
-volatile LiFi_HostInterface_t host_interface;
-volatile LiFi_Modem_t modem;
+enum { HOST_INTERFACE_BUFFER_SIZE = 512 };
+uint8_t host_interface_tx_buffer[HOST_INTERFACE_BUFFER_SIZE];
+uint8_t host_interface_rx_buffer[HOST_INTERFACE_BUFFER_SIZE];
+LiFi_HostInterface_t host_interface;
+LiFi_Modem_t modem;
 
-static void on_error(LiFi_Socket_Error_t error, LiFi_Socket_t *socket) {
-  __NOP() :
-}
-
-static void on_transmission_success(LiFi_Socket_t *socket) {
+static void on_error(LiFi_Socket_Error_t error, void *context) {
+  (void)error;
+  (void)context;
   __NOP();
 }
 
-static void on_receive_success(LiFi_Socket_t *socket) {
+static void on_transmission_success(void *context) {
+  (void)context;
+  __NOP();
+}
+
+static void on_receive_success(void *context) {
+  (void)context;
   __NOP();
 }
 
 int main(void) {
   HAL_Init();
   SystemClock_Config();
+  HAL_Hardware_Factory_Init();
+
+  LiFi_Transmitter_Init(&transmitter, &transmitter_timer, GPIOA, GPIO_PIN_5);
+  LiFi_Receiver_Init(&receiver, &receiver_timer, GPIOA, GPIO_PIN_1);
+  LiFi_Socket_Init(&socket, &transmitter, &receiver, on_error, NULL, on_transmission_success, NULL,
+                   on_receive_success, NULL);
+  LiFi_HostInterface_Init(&host_interface, &huart2, host_interface_tx_buffer,
+                          host_interface_rx_buffer);
+  LiFi_Modem_Init(&modem, &host_interface, &socket);
+
+  __HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);
+  HAL_UART_Receive_DMA(&huart2, host_interface_rx_buffer, HOST_INTERFACE_BUFFER_SIZE);
 
   while (1) {
     // TODO: initialize sockets and wait for messages
@@ -131,7 +148,8 @@ void HAL_Hardware_Factory_Init(void) {
     GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    hdma_usart2_rx.Instance = DMA1_Channel6;
+    hdma_usart2_rx.Instance = DMA1_Stream5;
+    hdma_usart2_rx.Init.Channel = DMA_CHANNEL_4;
     hdma_usart2_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
     hdma_usart2_rx.Init.PeriphInc = DMA_PINC_DISABLE;
     hdma_usart2_rx.Init.MemInc = DMA_MINC_ENABLE;
@@ -139,10 +157,11 @@ void HAL_Hardware_Factory_Init(void) {
     hdma_usart2_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
     hdma_usart2_rx.Init.Mode = DMA_CIRCULAR;
     hdma_usart2_rx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_usart2_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
 
     HAL_DMA_Init(&hdma_usart2_rx);
 
-    __HAL_LINKDMA(huart2, hdmarx, hdma_usart2_rx);
+    __HAL_LINKDMA(&huart2, hdmarx, hdma_usart2_rx);
 
     huart2.Instance = USART2;
     huart2.Init.BaudRate = 115200;
@@ -155,8 +174,8 @@ void HAL_Hardware_Factory_Init(void) {
 
     HAL_UART_Init(&huart2);
 
-    HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
+    HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
 
     HAL_NVIC_SetPriority(USART2_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(USART2_IRQn);
@@ -171,7 +190,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
   if (htim->Instance == TIM2) {
     LiFi_Transmitter_TimerCallback(&transmitter);
   } else if (htim->Instance == TIM3) {
-    LiFi_Receiver_TimerCallback(&server_receiver);
+    LiFi_Receiver_TimerCallback(&receiver);
   }
 }
 
@@ -187,7 +206,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
 void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart) {
   if (huart->Instance == USART2) {
-    uint16_t received_bytes_length = HOST_INTERFACE_RX_BUFFER_SIZE / 2;
+    uint16_t received_bytes_length = HOST_INTERFACE_BUFFER_SIZE / 2;
     LiFi_HostInterface_onUartDataReceivedCallback(&host_interface, (uint8_t)received_bytes_length,
                                                   0);
   }
@@ -195,24 +214,28 @@ void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart) {
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
   if (huart->Instance == USART2) {
-    uint16_t received_bytes_length = HOST_INTERFACE_RX_BUFFER_SIZE / 2;
+    uint16_t received_bytes_length = HOST_INTERFACE_BUFFER_SIZE / 2;
     LiFi_HostInterface_onUartDataReceivedCallback(&host_interface, (uint8_t)received_bytes_length,
                                                   received_bytes_length);
   }
 }
 
+void DMA1_Stream5_IRQHandler(void) {
+  HAL_DMA_IRQHandler(&hdma_usart2_rx);
+}
+
 void USART2_IRQHandler(void) {
   if (__HAL_UART_GET_IT_SOURCE(&huart2, UART_IT_TXE) &&
       __HAL_UART_GET_FLAG(&huart2, UART_FLAG_TXE)) {
-    LiFi_HostInterface_OnUartTransmitterEmptyCallback(&host_interface, HOS);
+    __HAL_UART_DISABLE_IT(&huart2, UART_IT_TXE);
     return;
   }
 
   if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_IDLE) != RESET) {
-    __HAL_UART_CLEAR_IDLEFLAG(host_interface->huart);
+    __HAL_UART_CLEAR_IDLEFLAG(host_interface.huart);
 
     uint32_t received_bytes_length =
-        HOST_INTERFACE_RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(&hdma_usart2_rx);
+        HOST_INTERFACE_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(&hdma_usart2_rx);
 
     LiFi_HostInterface_onUartDataReceivedCallback(&host_interface, (uint8_t)received_bytes_length,
                                                   0);

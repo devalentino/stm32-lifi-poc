@@ -61,7 +61,7 @@ void test_transmit_payload__wrong_crc(void) {
 
   Fake_LiFi_RunUntilIdle();
 
-  TEST_ASSERT_FALSE(fixture.sender.socket.is_tx_confirmation_required);
+  TEST_ASSERT_NOT_EQUAL(LIFI_SOCKET_WAITING_CONFIRMATION, fixture.sender.socket.state);
   TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_NAK,
                           fixture.sender.socket.rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.rx_package[RX_PACKAGE_LENGTH_INDEX]);
@@ -85,13 +85,13 @@ void test_transmit_payload__socket_is_reset_after_retries_limit(void) {
   Fake_LiFi_RunUntilIdle();
   Fake_LiFi_RunUntilIdle();
 
-  TEST_ASSERT_FALSE(fixture.sender.socket.is_tx_confirmation_required);
+  TEST_ASSERT_NOT_EQUAL(LIFI_SOCKET_WAITING_CONFIRMATION, fixture.sender.socket.state);
   TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_NAK,
                           fixture.sender.socket.rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.rx_package[RX_PACKAGE_LENGTH_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(0, fixture.recipient.socket.rx_package_bytes_received);
   TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.tx_retries_count);
-  TEST_ASSERT_FALSE(fixture.sender.socket.is_busy);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.sender.socket.state);
   TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onErrorCallback_fake.call_count);
   TEST_ASSERT_EQUAL(LIFI_SOCKET_CONNECTION_ERROR, Mock_LiFi_Socket_onErrorCallback_fake.arg0_val);
   TEST_ASSERT_EQUAL_PTR(&fixture.sender.socket, Mock_LiFi_Socket_onErrorCallback_fake.arg1_val);
@@ -130,22 +130,21 @@ void test_socket_continue_transmission_after_confirmation(void) {
 
   Fake_LiFi_RunUntilIdle();
 
-  TEST_ASSERT_TRUE(fixture.sender.socket.is_tx_confirmation_required);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_CONFIRMATION, fixture.sender.socket.state);
   TEST_ASSERT_EQUAL_UINT(1, LiFi_Transmitter_ToConfirmationMode_fake.call_count);
   TEST_ASSERT_EQUAL_PTR(fixture.sender.socket.transmitter,
                         LiFi_Transmitter_ToConfirmationMode_fake.arg0_val);
   TEST_ASSERT_EQUAL_UINT8(
-      PACKAGE_TYPE_ACK,
+      PACKAGE_TYPE_ACK_READY,
       fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(0,
                           fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_LENGTH_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(1, fixture.recipient.socket.rx_package_id);
-  TEST_ASSERT_EQUAL_UINT8(1, fixture.recipient.socket.tx_package_id);
 
   Fake_LiFi_RunUntilIdle();
 
-  TEST_ASSERT_FALSE(fixture.sender.socket.is_tx_confirmation_required);
-  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_ACK,
+  TEST_ASSERT_NOT_EQUAL(LIFI_SOCKET_WAITING_CONFIRMATION, fixture.sender.socket.state);
+  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_ACK_READY,
                           fixture.sender.socket.rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.rx_package[RX_PACKAGE_LENGTH_INDEX]);
   TEST_ASSERT_EQUAL_MEMORY(fixture.sender.socket.transmitter->tx_buffer + TX_PACKAGE_HEADER_BYTES,
@@ -153,6 +152,17 @@ void test_socket_continue_transmission_after_confirmation(void) {
                                fixture.sender.socket.tx_bytes_processed,
                            LIFI_TX_BUFFER_SIZE - TX_PACKAGE_HEADER_BYTES - 1);
   TEST_ASSERT_EQUAL_UINT8(2, fixture.sender.socket.tx_package_id);
+
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL_UINT8_ARRAY(payload, fixture.recipient.socket.rx_buffer, sizeof(payload));
+  TEST_ASSERT_EQUAL_UINT8(sizeof(payload), fixture.recipient.socket.rx_bytes_received);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.sender.socket.state);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.recipient.socket.state);
 }
 
 void test_transmit_payload__confirmation_timeout(void) {
@@ -166,15 +176,15 @@ void test_transmit_payload__confirmation_timeout(void) {
   Fake_LiFi_RunUntilIdle();
 
   TEST_ASSERT_EQUAL_UINT8_ARRAY(payload, fixture.recipient.socket.rx_buffer, sizeof(payload));
-  TEST_ASSERT_TRUE(fixture.sender.socket.is_tx_confirmation_required);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_CONFIRMATION, fixture.sender.socket.state);
 
+  fixture.sender.socket.tx_retries_count = MAX_TRANSMIT_RETRIES_COUNT - 1;
   LiFi_Transmitter_TimerCallback(fixture.sender.socket.transmitter);
 
-  TEST_ASSERT_FALSE(fixture.sender.socket.is_tx_confirmation_required);
   TEST_ASSERT_NULL(fixture.sender.socket.tx_buffer);
   TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.tx_buffer_length);
   TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.tx_bytes_processed);
-  TEST_ASSERT_FALSE(fixture.sender.socket.is_busy);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.sender.socket.state);
   TEST_ASSERT_EQUAL_PTR(&fixture.sender.socket, Mock_LiFi_Socket_onErrorCallback_fake.arg1_val);
 }
 
@@ -194,7 +204,7 @@ void test_receive_payload__connection_timeout(void) {
 
   TEST_ASSERT_NULL(fixture.recipient.socket.rx_buffer);
   TEST_ASSERT_EQUAL_UINT8(0, fixture.recipient.socket.rx_package_bytes_received);
-  TEST_ASSERT_FALSE(fixture.recipient.socket.is_busy);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.recipient.socket.state);
 }
 
 void test_transmit_payload__cant_transmit_to_the_busy_socket(void) {
@@ -211,21 +221,21 @@ void test_transmit_payload__cant_transmit_to_the_busy_socket(void) {
       LiFi_Socket_Send(&fixture.sender.socket, another_payload, sizeof(another_payload)));
 }
 
-void test_receive_payload__not_busy_on_read(void) {
+void test_receive_payload__cant_start_another_read_while_receiving(void) {
   LiFi_Socket_Pair_Fixture_t fixture;
   LiFi_Socket_Pair_Fixture_Init(&fixture);
   uint8_t payload[] = {'H', 'i'};
   uint8_t read_buffer[sizeof(payload)] = {0};
 
   TEST_ASSERT_TRUE(LiFi_Socket_Read(&fixture.recipient.socket, read_buffer));
-  TEST_ASSERT_TRUE(LiFi_Socket_Read(&fixture.recipient.socket, read_buffer));
-  TEST_ASSERT_FALSE(fixture.recipient.socket.is_busy);
+  TEST_ASSERT_FALSE(LiFi_Socket_Read(&fixture.recipient.socket, read_buffer));
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_RECEIVING, fixture.recipient.socket.state);
 
   LiFi_Socket_Send(&fixture.sender.socket, payload, sizeof(payload));
   Fake_LiFi_RunUntilIdle();
 
   TEST_ASSERT_FALSE(LiFi_Socket_Read(&fixture.recipient.socket, read_buffer));
-  TEST_ASSERT_TRUE(fixture.recipient.socket.is_busy);
+  TEST_ASSERT_NOT_EQUAL(LIFI_SOCKET_IDLE, fixture.recipient.socket.state);
 }
 
 void Test_LiFi_Protocol_Run(void) {
@@ -237,5 +247,5 @@ void Test_LiFi_Protocol_Run(void) {
   RUN_TEST(test_transmit_payload__confirmation_timeout);
   RUN_TEST(test_receive_payload__connection_timeout);
   RUN_TEST(test_transmit_payload__cant_transmit_to_the_busy_socket);
-  RUN_TEST(test_receive_payload__not_busy_on_read);
+  RUN_TEST(test_receive_payload__cant_start_another_read_while_receiving);
 }
