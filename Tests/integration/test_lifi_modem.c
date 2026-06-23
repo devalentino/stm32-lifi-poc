@@ -52,8 +52,8 @@ static void test_lifi_modem__socket_nak_releases_host(void) {
   Fake_LiFi_RunUntilIdle();
 
   TEST_ASSERT_EQUAL_HEX8(0x11, fixture.modem.host_interface->huart->Instance->DR);
-  TEST_ASSERT_EQUAL_UINT8_ARRAY((uint8_t[sizeof(payload)]){0},
-                                fixture.peer.socket.rx_buffer, sizeof(payload));
+  TEST_ASSERT_EQUAL_UINT8_ARRAY((uint8_t[sizeof(payload)]){0}, fixture.peer.socket.rx_buffer,
+                                sizeof(payload));
 }
 
 void Test_LiFi_Modem_Run(void) {

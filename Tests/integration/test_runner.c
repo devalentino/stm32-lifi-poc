@@ -4,7 +4,7 @@
 typedef void (*TestSuiteRunner)(void);
 
 static const TestSuiteRunner TEST_SUITES[] = {
-    // Test_LiFi_Protocol_Run,
+    Test_LiFi_Protocol_Run,
     Test_LiFi_Modem_Run,
 };
 

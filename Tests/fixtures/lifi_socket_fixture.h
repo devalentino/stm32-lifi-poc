@@ -9,6 +9,12 @@ typedef struct {
   LiFi_Socket_t socket;
 } LiFi_Socket_Fixture_t;
 
+typedef struct {
+  LiFi_Socket_Fixture_t sender;
+  LiFi_Socket_Fixture_t recipient;
+} LiFi_Socket_Pair_Fixture_t;
+
 void LiFi_Socket_Fixture_Init(LiFi_Socket_Fixture_t *fixture);
+void LiFi_Socket_Pair_Fixture_Init(LiFi_Socket_Pair_Fixture_t *fixture);
 
 #endif
