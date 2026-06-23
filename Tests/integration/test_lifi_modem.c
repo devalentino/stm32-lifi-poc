@@ -1,30 +1,59 @@
-#include "lifi_modem.h"
+#include <stdint.h>
+#include <string.h>
+
+#include "fake_lifi_callbacks.h"
+#include "lifi_modem_fixture.h"
 #include "test_suites.h"
 #include "unity.h"
-#include <stdint.h>
 
-static void test_lifi_modem__host_sent_payload(void) {
-  LiFi_Socket_t socket = {0};
+static void test_lifi_modem__host_payload_is_sent_through_socket(void) {
+  LiFi_Modem_Fixture_t fixture;
+  LiFi_Modem_Fixture_Init(&fixture);
+  const uint8_t payload[] = {'H', 'a', 'l', 'l', 'o'};
+  memcpy(fixture.host_rx_buffer, payload, sizeof(payload));
 
-  uint8_t tx_buffer[128] = {0};
-  uint8_t rx_buffer[128] = {'H', 'a', 'l', 'l', 'o'};
+  LiFi_HostInterface_onUartDataReceivedCallback(&fixture.host_interface, sizeof(payload), 0);
 
-  USART_TypeDef instance = {0};
-  UART_HandleTypeDef huart = {0};
-  huart.Instance = &instance;
+  TEST_ASSERT_EQUAL_PTR(fixture.host_rx_buffer, fixture.socket.socket.tx_buffer);
+  TEST_ASSERT_EQUAL_UINT8(sizeof(payload), fixture.socket.socket.tx_buffer_length);
+  TEST_ASSERT_EQUAL_UINT8_ARRAY(payload, fixture.socket.socket.tx_buffer, sizeof(payload));
+}
 
-  LiFi_HostInterface_t host_interface = {0};
-  LiFi_HostInterface_Init(&host_interface, &huart, tx_buffer, rx_buffer);
+static void test_lifi_modem__successful_transmission_releases_host(void) {
+  LiFi_Modem_Fixture_t fixture;
+  LiFi_Modem_Fixture_Init(&fixture);
 
-  LiFi_Modem_t modem = {0};
-  LiFi_Modem_Init(&modem, &host_interface, &socket);
+  fixture.socket.socket.on_transmission_success_callback(
+      fixture.socket.socket.on_transmission_success_callback_context);
 
-  LiFi_HostInterface_onUartDataReceivedCallback(&host_interface, sizeof(rx_buffer), 0);
+  TEST_ASSERT_EQUAL_HEX8(0x11, fixture.usart.DR);
+}
 
-  // TODO: assert XOFF is sent, LiFi_Socket started data processing, XON is sent on lifi
-  // transmission ended
+static void test_lifi_modem__transmission_error_releases_host(void) {
+  LiFi_Modem_Fixture_t fixture;
+  LiFi_Modem_Fixture_Init(&fixture);
+
+  fixture.socket.socket.on_error_callback(
+      LIFI_SOCKET_CONNECTION_ERROR, fixture.socket.socket.on_error_callback_context);
+
+  TEST_ASSERT_EQUAL_HEX8(0x11, fixture.usart.DR);
+}
+
+static void test_lifi_modem__does_not_replace_receive_callback(void) {
+  LiFi_Modem_Fixture_t fixture;
+  LiFi_Modem_Fixture_Init(&fixture);
+
+  fixture.socket.socket.on_receive_success_callback(
+      fixture.socket.socket.on_receive_success_callback_context);
+
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onReceiveSuccessfulCallback_fake.call_count);
+  TEST_ASSERT_EQUAL_PTR(&fixture.socket.socket,
+                        Mock_LiFi_Socket_onReceiveSuccessfulCallback_fake.arg0_val);
 }
 
 void Test_LiFi_Modem_Run(void) {
-  RUN_TEST(test_lifi_modem__host_sent_payload);
+  RUN_TEST(test_lifi_modem__host_payload_is_sent_through_socket);
+  RUN_TEST(test_lifi_modem__successful_transmission_releases_host);
+  RUN_TEST(test_lifi_modem__transmission_error_releases_host);
+  RUN_TEST(test_lifi_modem__does_not_replace_receive_callback);
 }

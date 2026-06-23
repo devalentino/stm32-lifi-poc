@@ -22,6 +22,9 @@ option(LIFI_BUILD_TESTS "Build host-side unit tests" OFF)
       Tests/integration/test_runner.c
       Tests/integration/test_lifi_protocol.c
       Tests/integration/test_lifi_modem.c
+      Tests/fixtures/lifi_socket_fixture.c
+      Tests/fixtures/lifi_modem_fixture.c
+      Tests/fake/fake_lifi_callbacks.c
       Tests/fake/fake_lifi_transport.c
       Tests/fake/fake_lifi_transmitter.c
       Tests/fake/fake_lifi_receiver.c
@@ -33,6 +36,7 @@ option(LIFI_BUILD_TESTS "Build host-side unit tests" OFF)
 
     target_include_directories(test_integration PRIVATE
       Tests/fake
+      Tests/fixtures
       Sources
       External/unity/src
       External/fff

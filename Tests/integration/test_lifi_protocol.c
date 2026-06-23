@@ -1,28 +1,14 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "fake_lifi_callbacks.h"
 #include "fake_lifi_transport.h"
-#include "fff.h"
 #include "lifi_protocol.h"
 #include "test_suites.h"
 #include "unity.h"
 
-DEFINE_FFF_GLOBALS;
-
-FAKE_VOID_FUNC(LiFi_Transmitter_TransmitBuffer, LiFi_Transmitter_t *, const uint8_t *, uint8_t);
-FAKE_VOID_FUNC(LiFi_Transmitter_ToConfirmationMode, LiFi_Transmitter_t *);
-FAKE_VOID_FUNC(Mock_LiFi_Socket_onErrorCallback, LiFi_Socket_Error_t, void *);
-FAKE_VOID_FUNC(Mock_LiFi_Socket_onTransmissionSuccessfulCallback, void *);
-FAKE_VOID_FUNC(Mock_LiFi_Socket_onReceiveSuccessfulCallback, void *);
-
 void setUp(void) {
-  RESET_FAKE(LiFi_Transmitter_TransmitBuffer);
-  RESET_FAKE(LiFi_Transmitter_ToConfirmationMode);
-  RESET_FAKE(Mock_LiFi_Socket_onErrorCallback);
-  RESET_FAKE(Mock_LiFi_Socket_onTransmissionSuccessfulCallback);
-  RESET_FAKE(Mock_LiFi_Socket_onReceiveSuccessfulCallback);
-  FFF_RESET_HISTORY();
-
+  Fake_LiFi_Callbacks_Reset();
   Fake_LiFi_Link_Reset();
   LiFi_Transmitter_TransmitBuffer_fake.custom_fake = Fake_LiFi_Transmitter_TransmitBuffer_Callback;
 }
