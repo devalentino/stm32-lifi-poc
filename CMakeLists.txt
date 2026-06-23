@@ -19,16 +19,24 @@ option(LIFI_BUILD_TESTS "Build host-side unit tests" OFF)
     enable_testing()
 
     add_executable(test_integration
+      Tests/integration/test_runner.c
       Tests/integration/test_lifi_protocol.c
+      Tests/integration/test_lifi_modem.c
+      Tests/fixtures/lifi_socket_fixture.c
+      Tests/fixtures/lifi_modem_fixture.c
+      Tests/fake/fake_lifi_callbacks.c
       Tests/fake/fake_lifi_transport.c
       Tests/fake/fake_lifi_transmitter.c
       Tests/fake/fake_lifi_receiver.c
+      Sources/lifi_host_interface.c
+      Sources/lifi_modem.c
       Sources/lifi_protocol.c
       External/unity/src/unity.c
     )
 
     target_include_directories(test_integration PRIVATE
       Tests/fake
+      Tests/fixtures
       Sources
       External/unity/src
       External/fff
@@ -78,6 +86,8 @@ set (PROJECT_SOURCES
 	Sources/lifi_transmitter.c
 	Sources/lifi_receiver.c
 	Sources/lifi_protocol.c
+	Sources/lifi_host_interface.c
+	Sources/lifi_modem.c
 	Sources/main.c
 	Sources/syscalls.c
 	Sources/sysmem.c
