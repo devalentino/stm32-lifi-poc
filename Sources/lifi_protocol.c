@@ -115,9 +115,8 @@ static bool received_package_crc_is_valid(const LiFi_Socket_t *socket) {
                        payload_length + RX_PACKAGE_HEADER_BYTES - 1);
 }
 
-static bool received_confirmation_is_valid(const LiFi_Socket_t *socket) {
-  return socket->rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX] == PACKAGE_TYPE_ACK_READY &&
-         socket->rx_package[RX_PACKAGE_ID_INDEX] == socket->tx_package_id &&
+static bool received_confirmation_has_valid_id_and_crc(const LiFi_Socket_t *socket) {
+  return socket->rx_package[RX_PACKAGE_ID_INDEX] == socket->tx_package_id &&
          received_package_crc_is_valid(socket);
 }
 
@@ -133,7 +132,21 @@ static void retry_current_payload_or_fail(LiFi_Socket_t *socket) {
 }
 
 static void handle_confirmation(LiFi_Socket_t *socket) {
-  if (!received_confirmation_is_valid(socket)) {
+  if (!received_confirmation_has_valid_id_and_crc(socket)) {
+    retry_current_payload_or_fail(socket);
+    return;
+  }
+
+  PackageType_t type = (PackageType_t)socket->rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX];
+
+  if (type == PACKAGE_TYPE_ACK_BUSY) {
+    socket->tx_retries_count = 0;
+    socket->tx_bytes_processed += socket->tx_package[TX_PACKAGE_LENGTH_INDEX];
+    socket->state = LIFI_SOCKET_WAITING_READY;
+    return;
+  }
+
+  if (type != PACKAGE_TYPE_ACK_READY) {
     retry_current_payload_or_fail(socket);
     return;
   }
@@ -200,7 +213,8 @@ static void handle_received_package(LiFi_Socket_t *socket) {
 
   switch (socket->state) {
   case LIFI_SOCKET_WAITING_CONFIRMATION:
-    if (type == PACKAGE_TYPE_ACK_READY || type == PACKAGE_TYPE_NAK) {
+    if (type == PACKAGE_TYPE_ACK_READY || type == PACKAGE_TYPE_ACK_BUSY ||
+        type == PACKAGE_TYPE_NAK) {
       handle_confirmation(socket);
     }
     break;
