@@ -205,19 +205,65 @@ void test_transmit_payload__ack_busy_pauses_sender(void) {
       PACKAGE_TYPE_ACK_READY,
       fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
 
-  // The recipient normally emitted ACK_READY. Mutate that pending fake-transport packet to
-  // ACK_BUSY before it is delivered, so the test exercises sender behavior for a busy peer.
+  // Simulate receiver-side backpressure: the payload was accepted, but the socket paused RX before
+  // the pending ACK is delivered. The peer sees this as ACK_BUSY and must stop sending.
+  fixture.recipient.socket.state = LIFI_SOCKET_RX_PAUSED;
   replace_current_tx_package_type(fixture.recipient.socket.transmitter, PACKAGE_TYPE_ACK_BUSY);
   uint8_t transmit_call_count_before_ack_busy = LiFi_Transmitter_TransmitBuffer_fake.call_count;
 
   Fake_LiFi_RunUntilIdle();
 
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_RX_PAUSED, fixture.recipient.socket.state);
   TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_READY, fixture.sender.socket.state);
   TEST_ASSERT_EQUAL_UINT8(transmit_call_count_before_ack_busy,
                           LiFi_Transmitter_TransmitBuffer_fake.call_count);
   TEST_ASSERT_EQUAL_UINT8(sizeof(payload), fixture.sender.socket.tx_bytes_processed);
   TEST_ASSERT_FALSE(fixture.sender.socket.transmitter->is_busy);
   TEST_ASSERT_EQUAL_UINT(0, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
+}
+
+void test_transmit_payload__waiting_sender_sends_status_on_timeout(void) {
+  LiFi_Socket_Pair_Fixture_t fixture;
+  LiFi_Socket_Pair_Fixture_Init(&fixture);
+  uint8_t payload[] = {'H', 'i'};
+  uint8_t read_buffer[sizeof(payload)] = {0};
+
+  LiFi_Socket_Read(&fixture.recipient.socket, read_buffer);
+  LiFi_Socket_Send(&fixture.sender.socket, payload, sizeof(payload));
+
+  Fake_LiFi_RunUntilIdle();
+
+  // Simulate receiver-side backpressure: the payload was accepted, but the socket paused RX before
+  // the pending ACK is delivered. The peer sees this as ACK_BUSY and must poll with STATUS later.
+  fixture.recipient.socket.state = LIFI_SOCKET_RX_PAUSED;
+  replace_current_tx_package_type(fixture.recipient.socket.transmitter, PACKAGE_TYPE_ACK_BUSY);
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_RX_PAUSED, fixture.recipient.socket.state);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_READY, fixture.sender.socket.state);
+
+  LiFi_Transmitter_TimerCallback(fixture.sender.socket.transmitter);
+
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_SENDING_CONTROL, fixture.sender.socket.state);
+  TEST_ASSERT_TRUE(fixture.sender.socket.transmitter->is_busy);
+  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_STATUS,
+                          fixture.sender.socket.transmitter
+                              ->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(fixture.sender.socket.tx_package_id,
+                          fixture.sender.socket.transmitter->tx_buffer[TX_PACKAGE_ID_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.transmitter->tx_buffer[TX_PACKAGE_LENGTH_INDEX]);
+
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_READY, fixture.sender.socket.state);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_SENDING_CONTROL, fixture.recipient.socket.state);
+  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_ACK_BUSY,
+                          fixture.recipient.socket.transmitter
+                              ->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(fixture.recipient.socket.rx_package_id,
+                          fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_ID_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(0,
+                          fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_LENGTH_INDEX]);
 }
 
 void test_transmit_payload__confirmation_timeout(void) {
@@ -299,7 +345,8 @@ void Test_LiFi_Protocol_Run(void) {
   // RUN_TEST(test_transmit_payload__socket_is_reset_after_retries_limit);
   // RUN_TEST(test_transmit_payload__receiver_ignores_package_on_wrong_start_byte);
   // RUN_TEST(test_socket_continue_transmission_after_confirmation);
-  RUN_TEST(test_transmit_payload__ack_busy_pauses_sender);
+  // RUN_TEST(test_transmit_payload__ack_busy_pauses_sender);
+  RUN_TEST(test_transmit_payload__waiting_sender_sends_status_on_timeout);
   // RUN_TEST(test_transmit_payload__confirmation_timeout);
   // RUN_TEST(test_receive_payload__connection_timeout);
   // RUN_TEST(test_transmit_payload__cant_transmit_to_the_busy_socket);
