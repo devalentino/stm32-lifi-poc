@@ -247,9 +247,9 @@ void test_transmit_payload__waiting_sender_sends_status_on_timeout__continue_wai
 
   TEST_ASSERT_EQUAL(LIFI_SOCKET_SENDING_CONTROL, fixture.sender.socket.state);
   TEST_ASSERT_TRUE(fixture.sender.socket.transmitter->is_busy);
-  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_STATUS,
-                          fixture.sender.socket.transmitter
-                              ->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(
+      PACKAGE_TYPE_STATUS,
+      fixture.sender.socket.transmitter->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(fixture.sender.socket.tx_package_id,
                           fixture.sender.socket.transmitter->tx_buffer[TX_PACKAGE_ID_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.transmitter->tx_buffer[TX_PACKAGE_LENGTH_INDEX]);
@@ -258,9 +258,9 @@ void test_transmit_payload__waiting_sender_sends_status_on_timeout__continue_wai
 
   TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_READY, fixture.sender.socket.state);
   TEST_ASSERT_EQUAL(LIFI_SOCKET_SENDING_CONTROL, fixture.recipient.socket.state);
-  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_ACK_BUSY,
-                          fixture.recipient.socket.transmitter
-                              ->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(
+      PACKAGE_TYPE_ACK_BUSY,
+      fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(fixture.recipient.socket.rx_package_id,
                           fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_ID_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(0,
@@ -268,9 +268,11 @@ void test_transmit_payload__waiting_sender_sends_status_on_timeout__continue_wai
 
   Fake_LiFi_RunUntilIdle();
 
-  TEST_ASSERT_EQUAL_UINT8(fixture.sender.socket.tx_package_id, fixture.sender.socket.rx_package[RX_PACKAGE_ID_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(fixture.sender.socket.tx_package_id,
+                          fixture.sender.socket.rx_package[RX_PACKAGE_ID_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.rx_package[RX_PACKAGE_LENGTH_INDEX]);
-  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_ACK_BUSY, fixture.sender.socket.rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_ACK_BUSY,
+                          fixture.sender.socket.rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(LIFI_SOCKET_WAITING_READY, fixture.sender.socket.state);
 }
 
@@ -303,9 +305,9 @@ void test_transmit_payload__waiting_sender_sends_status_on_timeout__resume_trans
 
   TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_READY, fixture.sender.socket.state);
   TEST_ASSERT_EQUAL(LIFI_SOCKET_SENDING_CONTROL, fixture.recipient.socket.state);
-  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_READY,
-                          fixture.recipient.socket.transmitter
-                              ->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(
+      PACKAGE_TYPE_READY,
+      fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(fixture.recipient.socket.rx_package_id,
                           fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_ID_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(0,
@@ -315,15 +317,20 @@ void test_transmit_payload__waiting_sender_sends_status_on_timeout__resume_trans
 
   TEST_ASSERT_EQUAL_UINT8(LIFI_SOCKET_RECEIVING, fixture.recipient.socket.state);
 
-  TEST_ASSERT_EQUAL_UINT8(fixture.sender.socket.tx_package_id, fixture.sender.socket.rx_package[RX_PACKAGE_ID_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(fixture.sender.socket.tx_package_id,
+                          fixture.sender.socket.rx_package[RX_PACKAGE_ID_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.rx_package[RX_PACKAGE_LENGTH_INDEX]);
-  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_READY, fixture.sender.socket.rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_READY,
+                          fixture.sender.socket.rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(LIFI_SOCKET_TRANSMITTING, fixture.sender.socket.state);
-  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_EOT, fixture.sender.socket.transmitter->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(
+      PACKAGE_TYPE_EOT,
+      fixture.sender.socket.transmitter->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
 
   Fake_LiFi_RunUntilIdle();
 
-  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_EOT, fixture.recipient.socket.rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_EOT,
+                          fixture.recipient.socket.rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX]);
   TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
   TEST_ASSERT_EQUAL_PTR(&fixture.sender.socket,
                         Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.arg0_val);
@@ -402,17 +409,59 @@ void test_receive_payload__cant_start_another_read_while_receiving(void) {
   TEST_ASSERT_NOT_EQUAL(LIFI_SOCKET_IDLE, fixture.recipient.socket.state);
 }
 
+void test_transmit_payload__sender_sends_package_receiver_busy(void) {
+  LiFi_Socket_Pair_Fixture_t fixture;
+  LiFi_Socket_Pair_Fixture_Init(&fixture);
+  uint8_t payload[] = {'H', 'i'};
+  uint8_t read_buffer[sizeof(payload)] = {0};
+
+  LiFi_Socket_Read(&fixture.recipient.socket, read_buffer);
+  LiFi_Socket_Send(&fixture.sender.socket, payload, sizeof(payload));
+
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+
+  // Simulate receiver got paused unexpectedly
+  fixture.recipient.socket.state = LIFI_SOCKET_RX_PAUSED;
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_SENDING_CONTROL_BUSY, fixture.recipient.socket.state);
+  TEST_ASSERT_EQUAL_UINT8(
+      PACKAGE_TYPE_BUSY,
+      fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(fixture.recipient.socket.rx_package_id,
+                          fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_ID_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(0,
+                          fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_LENGTH_INDEX]);
+
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL_UINT8(LIFI_SOCKET_RX_PAUSED, fixture.recipient.socket.state);
+
+  // sender got BUSY package type and waiting until ready
+  TEST_ASSERT_EQUAL_UINT8(fixture.sender.socket.tx_package_id,
+                          fixture.sender.socket.rx_package[RX_PACKAGE_ID_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.rx_package[RX_PACKAGE_LENGTH_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_BUSY,
+                          fixture.sender.socket.rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(LIFI_SOCKET_WAITING_READY, fixture.sender.socket.state);
+  TEST_ASSERT_EQUAL_UINT8(
+      PACKAGE_TYPE_EOT,
+      fixture.sender.socket.transmitter->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+}
+
 void Test_LiFi_Protocol_Run(void) {
-  // RUN_TEST(test_transmit_payload);
-  // RUN_TEST(test_transmit_payload__wrong_crc);
-  // RUN_TEST(test_transmit_payload__socket_is_reset_after_retries_limit);
-  // RUN_TEST(test_transmit_payload__receiver_ignores_package_on_wrong_start_byte);
-  // RUN_TEST(test_socket_continue_transmission_after_confirmation);
-  // RUN_TEST(test_transmit_payload__ack_busy_pauses_sender);
-  // RUN_TEST(test_transmit_payload__waiting_sender_sends_status_on_timeout__continue_waiting);
+  RUN_TEST(test_transmit_payload);
+  RUN_TEST(test_transmit_payload__wrong_crc);
+  RUN_TEST(test_transmit_payload__socket_is_reset_after_retries_limit);
+  RUN_TEST(test_transmit_payload__receiver_ignores_package_on_wrong_start_byte);
+  RUN_TEST(test_socket_continue_transmission_after_confirmation);
+  RUN_TEST(test_transmit_payload__ack_busy_pauses_sender);
+  RUN_TEST(test_transmit_payload__waiting_sender_sends_status_on_timeout__continue_waiting);
   RUN_TEST(test_transmit_payload__waiting_sender_sends_status_on_timeout__resume_transmission);
-  // RUN_TEST(test_transmit_payload__confirmation_timeout);
-  // RUN_TEST(test_receive_payload__connection_timeout);
-  // RUN_TEST(test_transmit_payload__cant_transmit_to_the_busy_socket);
-  // RUN_TEST(test_receive_payload__cant_start_another_read_while_receiving);
+  RUN_TEST(test_transmit_payload__confirmation_timeout);
+  RUN_TEST(test_receive_payload__connection_timeout);
+  RUN_TEST(test_transmit_payload__cant_transmit_to_the_busy_socket);
+  RUN_TEST(test_receive_payload__cant_start_another_read_while_receiving);
+  RUN_TEST(test_transmit_payload__sender_sends_package_receiver_busy);
 }
