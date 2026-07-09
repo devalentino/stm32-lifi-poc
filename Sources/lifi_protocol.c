@@ -151,7 +151,7 @@ static void retry_current_payload_or_fail(LiFi_Socket_t *socket) {
   send_current_payload(socket);
 }
 
-static void retry_eod_or_fail(LiFi_Socket_t *socket) {
+static void retry_eot_or_fail(LiFi_Socket_t *socket) {
   ++socket->tx_retries_count;
 
   if (socket->tx_retries_count >= MAX_TRANSMIT_RETRIES_COUNT) {
@@ -215,7 +215,7 @@ static void handle_confirmation_eot(LiFi_Socket_t *socket) {
     return;
   }
 
-  retry_eod_or_fail(socket);
+  retry_eot_or_fail(socket);
 }
 
 static void handle_confirmation(LiFi_Socket_t *socket) {
@@ -309,7 +309,11 @@ static void handle_eot(LiFi_Socket_t *socket) {
 static void handle_invalid_package(LiFi_Socket_t *socket) {
   switch (socket->state) {
   case LIFI_SOCKET_WAITING_CONFIRMATION:
-    retry_current_payload_or_fail(socket);
+    if (socket->tx_package[TX_PACKAGE_PACKAGE_TYPE_INDEX] == PACKAGE_TYPE_EOT) {
+      retry_eot_or_fail(socket);
+    } else {
+      retry_current_payload_or_fail(socket);
+    }
     break;
 
   case LIFI_SOCKET_WAITING_READY:
@@ -437,7 +441,10 @@ static void on_buffer_transmitted(void *context) {
 static void on_transmitter_timeout(void *context) {
   LiFi_Socket_t *socket = (LiFi_Socket_t *)context;
 
-  if (socket->state == LIFI_SOCKET_WAITING_CONFIRMATION) {
+  if (socket->state == LIFI_SOCKET_WAITING_CONFIRMATION &&
+      socket->tx_package[TX_PACKAGE_PACKAGE_TYPE_INDEX] == PACKAGE_TYPE_EOT) {
+    retry_eot_or_fail(socket);
+  } else if (socket->state == LIFI_SOCKET_WAITING_CONFIRMATION) {
     retry_current_payload_or_fail(socket);
   } else if (socket->state == LIFI_SOCKET_WAITING_READY) {
     send_status(socket);

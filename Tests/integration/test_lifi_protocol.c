@@ -4,6 +4,7 @@
 #include "fake_lifi_transport.h"
 #include "lifi_protocol.h"
 #include "lifi_socket_fixture.h"
+#include "lifi_transmitter.h"
 #include "test_suites.h"
 #include "unity.h"
 
@@ -482,19 +483,79 @@ void test_transmit_payload__eot_not_acked(void) {
                         Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.arg0_val);
 }
 
+void test_transmit_payload__eot_confirmation_has_wrong_crc(void) {
+  LiFi_Socket_Pair_Fixture_t fixture;
+  LiFi_Socket_Pair_Fixture_Init(&fixture);
+  uint8_t payload[] = {'H', 'i'};
+  uint8_t read_buffer[sizeof(payload)] = {0};
+
+  LiFi_Socket_Read(&fixture.recipient.socket, read_buffer);
+  LiFi_Socket_Send(&fixture.sender.socket, payload, sizeof(payload));
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL_UINT8_ARRAY(payload, fixture.recipient.socket.rx_buffer, sizeof(payload));
+
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+
+  // Corrupt the CRC byte in EOD confirmation.
+  fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_HEADER_BYTES] ^= 0xFF;
+
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL_UINT(0, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
+  TEST_ASSERT_EQUAL_UINT8(1, fixture.sender.socket.tx_retries_count);
+
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
+  TEST_ASSERT_EQUAL_PTR(&fixture.sender.socket,
+                        Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.arg0_val);
+}
+
+void test_transmit_payload__eot_not_confirmed_resend_on_timeout(void) {
+  LiFi_Socket_Pair_Fixture_t fixture;
+  LiFi_Socket_Pair_Fixture_Init(&fixture);
+  uint8_t payload[] = {'H', 'i'};
+  uint8_t read_buffer[sizeof(payload)] = {0};
+
+  LiFi_Socket_Read(&fixture.recipient.socket, read_buffer);
+  LiFi_Socket_Send(&fixture.sender.socket, payload, sizeof(payload));
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL_UINT8_ARRAY(payload, fixture.recipient.socket.rx_buffer, sizeof(payload));
+
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+
+  LiFi_Transmitter_TimerCallback(&fixture.sender.transmitter);
+
+  TEST_ASSERT_EQUAL_UINT(0, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
+  TEST_ASSERT_EQUAL_UINT8(1, fixture.sender.socket.tx_retries_count);
+
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
+  TEST_ASSERT_EQUAL_PTR(&fixture.sender.socket,
+                        Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.arg0_val);
+}
+
 void Test_LiFi_Protocol_Run(void) {
-  // RUN_TEST(test_transmit_payload);
-  // RUN_TEST(test_transmit_payload__wrong_crc);
-  // RUN_TEST(test_transmit_payload__socket_is_reset_after_retries_limit);
-  // RUN_TEST(test_transmit_payload__receiver_ignores_package_on_wrong_start_byte);
-  // RUN_TEST(test_socket_continue_transmission_after_confirmation);
-  // RUN_TEST(test_transmit_payload__ack_busy_pauses_sender);
-  // RUN_TEST(test_transmit_payload__waiting_sender_sends_status_on_timeout__continue_waiting);
-  // RUN_TEST(test_transmit_payload__waiting_sender_sends_status_on_timeout__resume_transmission);
-  // RUN_TEST(test_transmit_payload__confirmation_timeout);
-  // RUN_TEST(test_receive_payload__connection_timeout);
-  // RUN_TEST(test_transmit_payload__cant_transmit_to_the_busy_socket);
-  // RUN_TEST(test_receive_payload__cant_start_another_read_while_receiving);
-  // RUN_TEST(test_transmit_payload__sender_sends_package_receiver_busy);
+  RUN_TEST(test_transmit_payload);
+  RUN_TEST(test_transmit_payload__wrong_crc);
+  RUN_TEST(test_transmit_payload__socket_is_reset_after_retries_limit);
+  RUN_TEST(test_transmit_payload__receiver_ignores_package_on_wrong_start_byte);
+  RUN_TEST(test_socket_continue_transmission_after_confirmation);
+  RUN_TEST(test_transmit_payload__ack_busy_pauses_sender);
+  RUN_TEST(test_transmit_payload__waiting_sender_sends_status_on_timeout__continue_waiting);
+  RUN_TEST(test_transmit_payload__waiting_sender_sends_status_on_timeout__resume_transmission);
+  RUN_TEST(test_transmit_payload__confirmation_timeout);
+  RUN_TEST(test_receive_payload__connection_timeout);
+  RUN_TEST(test_transmit_payload__cant_transmit_to_the_busy_socket);
+  RUN_TEST(test_receive_payload__cant_start_another_read_while_receiving);
+  RUN_TEST(test_transmit_payload__sender_sends_package_receiver_busy);
   RUN_TEST(test_transmit_payload__eot_not_acked);
+  RUN_TEST(test_transmit_payload__eot_confirmation_has_wrong_crc);
+  RUN_TEST(test_transmit_payload__eot_not_confirmed_resend_on_timeout);
 }
