@@ -467,6 +467,14 @@ void test_transmit_payload__eot_not_acked(void) {
   Fake_LiFi_RunUntilIdle();
   Fake_LiFi_RunUntilIdle();
 
+  // Original EOT has been processed: receiver already fired its success callback and is holding
+  // the ACK_READY, about to transmit it.
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_CONFIRMATION, fixture.sender.socket.state);
+  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_EOT,
+                          fixture.sender.socket.tx_package[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_ACK_EOD, fixture.recipient.socket.state);
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onReceiveSuccessfulCallback_fake.call_count);
+
   replace_current_tx_package_type(fixture.recipient.socket.transmitter, PACKAGE_TYPE_NAK);
 
   Fake_LiFi_RunUntilIdle();
@@ -475,12 +483,25 @@ void test_transmit_payload__eot_not_acked(void) {
   TEST_ASSERT_EQUAL_UINT(0, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
   TEST_ASSERT_EQUAL_UINT8(1, fixture.sender.socket.tx_retries_count);
 
+  // Retry resent an EOT (not a bogus empty PAYLOAD), and by the time it lands the receiver has
+  // already completed and moved on to IDLE.
+  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_EOT,
+                          fixture.sender.socket.tx_package[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.recipient.socket.state);
+
   Fake_LiFi_RunUntilIdle();
   Fake_LiFi_RunUntilIdle();
 
   TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
   TEST_ASSERT_EQUAL_PTR(&fixture.sender.socket,
                         Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.arg0_val);
+
+  // The retried EOT was recognized as a duplicate of an already-completed transfer: receiver
+  // re-acked it without reprocessing/re-firing its own success callback.
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onReceiveSuccessfulCallback_fake.call_count);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.sender.socket.state);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.recipient.socket.state);
+  TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.tx_retries_count);
 }
 
 void test_transmit_payload__eot_confirmation_has_wrong_crc(void) {
