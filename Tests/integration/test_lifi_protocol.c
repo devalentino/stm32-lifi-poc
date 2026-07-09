@@ -712,6 +712,128 @@ void test_transmit_payload__idle_receiver_drops_eot_retry_with_mismatched_id(voi
   TEST_ASSERT_EQUAL_UINT(0, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
 }
 
+void test_transmit_payload__waiting_ready_timeout_retries_exhausted(void) {
+  LiFi_Socket_Pair_Fixture_t fixture;
+  LiFi_Socket_Pair_Fixture_Init(&fixture);
+  uint8_t payload[] = {'H', 'i'};
+  uint8_t read_buffer[sizeof(payload)] = {0};
+
+  LiFi_Socket_Read(&fixture.recipient.socket, read_buffer);
+  LiFi_Socket_Send(&fixture.sender.socket, payload, sizeof(payload));
+  Fake_LiFi_RunUntilIdle();
+
+  fixture.recipient.socket.state = LIFI_SOCKET_RX_PAUSED;
+  replace_current_tx_package_type(fixture.recipient.socket.transmitter, PACKAGE_TYPE_ACK_BUSY);
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_READY, fixture.sender.socket.state);
+
+  // Receiver goes fully silent from here - every future STATUS poll times out with no reply.
+  fixture.sender.socket.tx_retries_count = MAX_TRANSMIT_RETRIES_COUNT - 1;
+  LiFi_Transmitter_TimerCallback(fixture.sender.socket.transmitter);
+
+  TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.tx_retries_count);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.sender.socket.state);
+  TEST_ASSERT_NULL(fixture.sender.socket.tx_buffer);
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onErrorCallback_fake.call_count);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_CONNECTION_ERROR, Mock_LiFi_Socket_onErrorCallback_fake.arg0_val);
+  TEST_ASSERT_EQUAL_PTR(&fixture.sender.socket, Mock_LiFi_Socket_onErrorCallback_fake.arg1_val);
+}
+
+void test_transmit_payload__waiting_ready_nak_retries_exhausted(void) {
+  LiFi_Socket_Pair_Fixture_t fixture;
+  LiFi_Socket_Pair_Fixture_Init(&fixture);
+  uint8_t payload[] = {'H', 'i'};
+  uint8_t read_buffer[sizeof(payload)] = {0};
+
+  LiFi_Socket_Read(&fixture.recipient.socket, read_buffer);
+  LiFi_Socket_Send(&fixture.sender.socket, payload, sizeof(payload));
+  Fake_LiFi_RunUntilIdle();
+
+  fixture.recipient.socket.state = LIFI_SOCKET_RX_PAUSED;
+  replace_current_tx_package_type(fixture.recipient.socket.transmitter, PACKAGE_TYPE_ACK_BUSY);
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_READY, fixture.sender.socket.state);
+
+  LiFi_Transmitter_TimerCallback(fixture.sender.socket.transmitter); // sends a STATUS poll
+
+  // Simulate a desynced id from here on: every STATUS poll gets rejected with NAK instead of
+  // ACK_BUSY/READY - an active rejection, not proof it's fine to keep waiting.
+  fixture.recipient.socket.rx_package_id = 99;
+  fixture.sender.socket.tx_retries_count = MAX_TRANSMIT_RETRIES_COUNT - 1;
+
+  Fake_LiFi_RunUntilIdle(); // STATUS delivered to recipient -> NAK queued
+  Fake_LiFi_RunUntilIdle(); // NAK delivered to sender -> retry budget exhausted
+
+  TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.tx_retries_count);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.sender.socket.state);
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onErrorCallback_fake.call_count);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_CONNECTION_ERROR, Mock_LiFi_Socket_onErrorCallback_fake.arg0_val);
+}
+
+void test_transmit_payload__waiting_ready_garbled_response_retries_exhausted(void) {
+  LiFi_Socket_Pair_Fixture_t fixture;
+  LiFi_Socket_Pair_Fixture_Init(&fixture);
+  uint8_t payload[] = {'H', 'i'};
+  uint8_t read_buffer[sizeof(payload)] = {0};
+
+  LiFi_Socket_Read(&fixture.recipient.socket, read_buffer);
+  LiFi_Socket_Send(&fixture.sender.socket, payload, sizeof(payload));
+  Fake_LiFi_RunUntilIdle();
+
+  fixture.recipient.socket.state = LIFI_SOCKET_RX_PAUSED;
+  replace_current_tx_package_type(fixture.recipient.socket.transmitter, PACKAGE_TYPE_ACK_BUSY);
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_READY, fixture.sender.socket.state);
+
+  LiFi_Transmitter_TimerCallback(fixture.sender.socket.transmitter); // sends a STATUS poll
+  Fake_LiFi_RunUntilIdle(); // STATUS delivered, recipient (still RX_PAUSED) replies ACK_BUSY
+
+  // Corrupt this ACK_BUSY reply's CRC before it lands - garbled bytes are not a confirmed
+  // ACK_BUSY, so they must not be treated as proof it's fine to keep waiting either.
+  fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_HEADER_BYTES] ^= 0xFF;
+  fixture.sender.socket.tx_retries_count = MAX_TRANSMIT_RETRIES_COUNT - 1;
+
+  Fake_LiFi_RunUntilIdle(); // garbled ACK_BUSY delivered to sender -> retry budget exhausted
+
+  TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.tx_retries_count);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.sender.socket.state);
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onErrorCallback_fake.call_count);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_CONNECTION_ERROR, Mock_LiFi_Socket_onErrorCallback_fake.arg0_val);
+}
+
+void test_transmit_payload__waiting_ready_ack_busy_resets_retries(void) {
+  LiFi_Socket_Pair_Fixture_t fixture;
+  LiFi_Socket_Pair_Fixture_Init(&fixture);
+  uint8_t payload[] = {'H', 'i'};
+  uint8_t read_buffer[sizeof(payload)] = {0};
+
+  LiFi_Socket_Read(&fixture.recipient.socket, read_buffer);
+  LiFi_Socket_Send(&fixture.sender.socket, payload, sizeof(payload));
+  Fake_LiFi_RunUntilIdle();
+
+  fixture.recipient.socket.state = LIFI_SOCKET_RX_PAUSED;
+  replace_current_tx_package_type(fixture.recipient.socket.transmitter, PACKAGE_TYPE_ACK_BUSY);
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_READY, fixture.sender.socket.state);
+
+  LiFi_Transmitter_TimerCallback(fixture.sender.socket.transmitter); // sends a STATUS poll
+
+  // Right at the edge of the retry budget - a genuine ACK_BUSY must still save it, no matter how
+  // long the receiver has legitimately been busy.
+  fixture.sender.socket.tx_retries_count = MAX_TRANSMIT_RETRIES_COUNT - 1;
+
+  Fake_LiFi_RunUntilIdle(); // STATUS delivered, recipient (still RX_PAUSED) replies ACK_BUSY
+  Fake_LiFi_RunUntilIdle(); // ACK_BUSY delivered to sender
+
+  TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.tx_retries_count);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_READY, fixture.sender.socket.state);
+  TEST_ASSERT_EQUAL_UINT(0, Mock_LiFi_Socket_onErrorCallback_fake.call_count);
+}
+
 void Test_LiFi_Protocol_Run(void) {
   RUN_TEST(test_transmit_payload);
   RUN_TEST(test_transmit_payload__wrong_crc);
@@ -733,4 +855,8 @@ void Test_LiFi_Protocol_Run(void) {
   RUN_TEST(test_transmit_payload__eot_confirmation_ack_busy_completes_transfer);
   RUN_TEST(test_transmit_payload__eot_confirmation_retries_exhausted);
   RUN_TEST(test_transmit_payload__idle_receiver_drops_eot_retry_with_mismatched_id);
+  RUN_TEST(test_transmit_payload__waiting_ready_timeout_retries_exhausted);
+  RUN_TEST(test_transmit_payload__waiting_ready_nak_retries_exhausted);
+  RUN_TEST(test_transmit_payload__waiting_ready_garbled_response_retries_exhausted);
+  RUN_TEST(test_transmit_payload__waiting_ready_ack_busy_resets_retries);
 }

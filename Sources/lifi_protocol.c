@@ -227,18 +227,29 @@ static void handle_confirmation(LiFi_Socket_t *socket) {
   handle_confirmation_payload(socket);
 }
 
-static void handle_ready_status(LiFi_Socket_t *socket) {
+static void handle_waiting_ready_response(LiFi_Socket_t *socket) {
   PackageType_t type = (PackageType_t)socket->rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX];
 
   if (type == PACKAGE_TYPE_ACK_BUSY) {
+    socket->tx_retries_count = 0;
     socket->state = LIFI_SOCKET_WAITING_READY;
     return;
   }
 
   if (type != PACKAGE_TYPE_READY) {
+    // NAK: receiver rejected the STATUS itself - a failed attempt, not proof it's fine to wait.
+    ++socket->tx_retries_count;
+
+    if (socket->tx_retries_count >= MAX_TRANSMIT_RETRIES_COUNT) {
+      notify_error_and_reset(socket);
+      return;
+    }
+
     send_status(socket);
     return;
   }
+
+  socket->tx_retries_count = 0;
 
   if (socket->tx_bytes_processed < socket->tx_buffer_length) {
     send_next_payload(socket);
@@ -317,6 +328,14 @@ static void handle_invalid_package(LiFi_Socket_t *socket) {
     break;
 
   case LIFI_SOCKET_WAITING_READY:
+    // Garbled/unexpected bytes are not a confirmed ACK_BUSY - treat as a failed attempt.
+    ++socket->tx_retries_count;
+
+    if (socket->tx_retries_count >= MAX_TRANSMIT_RETRIES_COUNT) {
+      notify_error_and_reset(socket);
+      break;
+    }
+
     send_status(socket);
     break;
 
@@ -368,7 +387,7 @@ static void handle_received_package(LiFi_Socket_t *socket) {
       return;
     }
 
-    handle_ready_status(socket);
+    handle_waiting_ready_response(socket);
     return;
 
   case LIFI_SOCKET_RECEIVING:
@@ -447,6 +466,15 @@ static void on_transmitter_timeout(void *context) {
   } else if (socket->state == LIFI_SOCKET_WAITING_CONFIRMATION) {
     retry_current_payload_or_fail(socket);
   } else if (socket->state == LIFI_SOCKET_WAITING_READY) {
+    // Only a genuinely unanswered STATUS counts against the limit - a receiver that keeps
+    // replying ACK_BUSY (still legitimately busy) must never be capped out by this.
+    ++socket->tx_retries_count;
+
+    if (socket->tx_retries_count >= MAX_TRANSMIT_RETRIES_COUNT) {
+      notify_error_and_reset(socket);
+      return;
+    }
+
     send_status(socket);
   }
 }
