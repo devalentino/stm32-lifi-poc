@@ -126,6 +126,11 @@ static void send_eot(LiFi_Socket_t *socket) {
   socket->state = LIFI_SOCKET_TRANSMITTING;
 }
 
+static void send_eot_ack(LiFi_Socket_t *socket) {
+  send_control(socket, PACKAGE_TYPE_ACK_READY, socket->rx_package_id);
+  socket->state = LIFI_SOCKET_ACK_EOD;
+}
+
 static bool received_package_crc_is_valid(const LiFi_Socket_t *socket) {
   uint8_t payload_length = socket->rx_package[RX_PACKAGE_LENGTH_INDEX];
   uint8_t crc_index = RX_PACKAGE_HEADER_BYTES + payload_length;
@@ -146,7 +151,18 @@ static void retry_current_payload_or_fail(LiFi_Socket_t *socket) {
   send_current_payload(socket);
 }
 
-static void handle_confirmation(LiFi_Socket_t *socket) {
+static void retry_eod_or_fail(LiFi_Socket_t *socket) {
+  ++socket->tx_retries_count;
+
+  if (socket->tx_retries_count >= MAX_TRANSMIT_RETRIES_COUNT) {
+    notify_error_and_reset(socket);
+    return;
+  }
+
+  send_eot(socket);
+}
+
+static void handle_confirmation_payload(LiFi_Socket_t *socket) {
   PackageType_t type = (PackageType_t)socket->rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX];
 
   if (type == PACKAGE_TYPE_BUSY) {
@@ -167,7 +183,7 @@ static void handle_confirmation(LiFi_Socket_t *socket) {
     return;
   }
 
-  // got ACK_READY
+  // got ACK_READY for PAYLOAD, continue transmission
   socket->tx_retries_count = 0;
   socket->tx_bytes_processed += socket->tx_package[TX_PACKAGE_LENGTH_INDEX];
 
@@ -177,11 +193,38 @@ static void handle_confirmation(LiFi_Socket_t *socket) {
   }
 
   send_eot(socket);
+}
 
-  if (socket->on_transmission_success_callback != NULL &&
-      socket->on_transmission_success_callback_context != NULL) {
-    socket->on_transmission_success_callback(socket->on_transmission_success_callback_context);
+static void handle_confirmation_eot(LiFi_Socket_t *socket) {
+  PackageType_t type = (PackageType_t)socket->rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX];
+
+  if (type == PACKAGE_TYPE_ACK_READY) {
+    clear_transaction(socket);
+
+    if (socket->on_transmission_success_callback != NULL &&
+        socket->on_transmission_success_callback_context != NULL) {
+      socket->on_transmission_success_callback(socket->on_transmission_success_callback_context);
+    }
+
+    return;
   }
+
+  if (type == PACKAGE_TYPE_BUSY || type == PACKAGE_TYPE_ACK_BUSY) {
+    socket->tx_retries_count = 0;
+    socket->state = LIFI_SOCKET_WAITING_READY;
+    return;
+  }
+
+  retry_eod_or_fail(socket);
+}
+
+static void handle_confirmation(LiFi_Socket_t *socket) {
+  if (socket->tx_package[TX_PACKAGE_PACKAGE_TYPE_INDEX] == PACKAGE_TYPE_EOT) {
+    handle_confirmation_eot(socket);
+    return;
+  }
+
+  handle_confirmation_payload(socket);
 }
 
 static void handle_ready_status(LiFi_Socket_t *socket) {
@@ -255,7 +298,7 @@ static void handle_eot(LiFi_Socket_t *socket) {
     return;
   }
 
-  socket->state = LIFI_SOCKET_IDLE;
+  send_eot_ack(socket);
 
   if (socket->on_receive_success_callback != NULL &&
       socket->on_receive_success_callback_context != NULL) {
@@ -344,6 +387,15 @@ static void handle_received_package(LiFi_Socket_t *socket) {
     }
     return;
 
+  case LIFI_SOCKET_IDLE:
+    if (type == PACKAGE_TYPE_EOT &&
+        socket->rx_package[RX_PACKAGE_ID_INDEX] == socket->rx_package_id) {
+      send_eot_ack(socket);
+    } else {
+      handle_invalid_package(socket);
+    }
+    return;
+
   default:
     handle_invalid_package(socket);
     return;
@@ -355,11 +407,6 @@ static void on_buffer_transmitted(void *context) {
 
   switch (socket->state) {
   case LIFI_SOCKET_TRANSMITTING:
-    // if (socket->tx_package[TX_PACKAGE_PACKAGE_TYPE_INDEX] == PACKAGE_TYPE_EOT) {
-    //   clear_transaction(socket);
-    //   return;
-    // }
-
     socket->state = LIFI_SOCKET_WAITING_CONFIRMATION;
     socket->rx_package_bytes_received = 0;
     LiFi_Transmitter_ToConfirmationMode(socket->transmitter);
@@ -377,6 +424,10 @@ static void on_buffer_transmitted(void *context) {
 
   case LIFI_SOCKET_SENDING_CONTROL_BUSY:
     socket->state = LIFI_SOCKET_RX_PAUSED;
+    break;
+
+  case LIFI_SOCKET_ACK_EOD:
+    socket->state = LIFI_SOCKET_IDLE;
 
   default:
     break;
@@ -406,7 +457,8 @@ static void on_byte_received(void *context) {
   LiFi_Socket_t *socket = (LiFi_Socket_t *)context;
 
   if (socket->state != LIFI_SOCKET_RECEIVING && socket->state != LIFI_SOCKET_WAITING_CONFIRMATION &&
-      socket->state != LIFI_SOCKET_WAITING_READY && socket->state != LIFI_SOCKET_RX_PAUSED) {
+      socket->state != LIFI_SOCKET_WAITING_READY && socket->state != LIFI_SOCKET_RX_PAUSED &&
+      socket->state != LIFI_SOCKET_IDLE) {
     return;
   }
 

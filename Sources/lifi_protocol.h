@@ -30,7 +30,8 @@ typedef enum {
   LIFI_SOCKET_RX_PAUSED = 0x04,
   LIFI_SOCKET_RECEIVING = 0x05,
   LIFI_SOCKET_SENDING_CONTROL = 0x06,
-  LIFI_SOCKET_SENDING_CONTROL_BUSY = 0x07
+  LIFI_SOCKET_SENDING_CONTROL_BUSY = 0x07,
+  LIFI_SOCKET_ACK_EOD = 0x08
 } LiFi_Socket_State_t;
 
 typedef enum {
@@ -53,6 +54,7 @@ typedef void (*LiFi_Socket_onTransmissionSuccessfulCallback)(void *context);
 typedef void (*LiFi_Socket_onReceiveSuccessfulCallback)(void *context);
 
 struct LiFi_Socket_t {
+  const char *name;
   LiFi_Transmitter_t *transmitter;
   LiFi_Receiver_t *receiver;
 
