@@ -198,7 +198,7 @@ static void handle_confirmation_payload(LiFi_Socket_t *socket) {
 static void handle_confirmation_eot(LiFi_Socket_t *socket) {
   PackageType_t type = (PackageType_t)socket->rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX];
 
-  if (type == PACKAGE_TYPE_ACK_READY) {
+  if (type == PACKAGE_TYPE_ACK_READY || type == PACKAGE_TYPE_ACK_BUSY) {
     clear_transaction(socket);
 
     if (socket->on_transmission_success_callback != NULL &&
@@ -209,7 +209,7 @@ static void handle_confirmation_eot(LiFi_Socket_t *socket) {
     return;
   }
 
-  if (type == PACKAGE_TYPE_BUSY || type == PACKAGE_TYPE_ACK_BUSY) {
+  if (type == PACKAGE_TYPE_BUSY) {
     socket->tx_retries_count = 0;
     socket->state = LIFI_SOCKET_WAITING_READY;
     return;

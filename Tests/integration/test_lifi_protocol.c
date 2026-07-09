@@ -562,6 +562,156 @@ void test_transmit_payload__eot_not_confirmed_resend_on_timeout(void) {
                         Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.arg0_val);
 }
 
+void test_transmit_payload__eot_confirmation_busy_pauses_sender(void) {
+  LiFi_Socket_Pair_Fixture_t fixture;
+  LiFi_Socket_Pair_Fixture_Init(&fixture);
+  uint8_t payload[] = {'H', 'i'};
+  uint8_t read_buffer[sizeof(payload)] = {0};
+
+  LiFi_Socket_Read(&fixture.recipient.socket, read_buffer);
+  LiFi_Socket_Send(&fixture.sender.socket, payload, sizeof(payload));
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_TRANSMITTING, fixture.sender.socket.state);
+  TEST_ASSERT_EQUAL_UINT8(
+      PACKAGE_TYPE_EOT,
+      fixture.sender.socket.transmitter->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+
+  // Simulate receiver-side backpressure right as the EOT arrives: it gets paused before it can
+  // process/ack it, and replies BUSY instead of ACK_READY.
+  fixture.recipient.socket.state = LIFI_SOCKET_RX_PAUSED;
+  fixture.sender.socket.tx_retries_count = 2; // will get reset on receiving BUSY
+
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_SENDING_CONTROL_BUSY, fixture.recipient.socket.state);
+  TEST_ASSERT_EQUAL_UINT8(
+      PACKAGE_TYPE_BUSY,
+      fixture.recipient.socket.transmitter->tx_buffer[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL_UINT8(fixture.sender.socket.tx_package_id,
+                          fixture.sender.socket.rx_package[RX_PACKAGE_ID_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_BUSY,
+                          fixture.sender.socket.rx_package[RX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_READY, fixture.sender.socket.state);
+  TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.tx_retries_count);
+  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_EOT,
+                          fixture.sender.socket.tx_package[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL_UINT(0, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
+}
+
+void test_transmit_payload__eot_confirmation_ack_busy_completes_transfer(void) {
+  LiFi_Socket_Pair_Fixture_t fixture;
+  LiFi_Socket_Pair_Fixture_Init(&fixture);
+  uint8_t payload[] = {'H', 'i'};
+  uint8_t read_buffer[sizeof(payload)] = {0};
+
+  LiFi_Socket_Read(&fixture.recipient.socket, read_buffer);
+  LiFi_Socket_Send(&fixture.sender.socket, payload, sizeof(payload));
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_CONFIRMATION, fixture.sender.socket.state);
+  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_EOT,
+                          fixture.sender.socket.tx_package[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+
+  // Simulate the receiver pausing right as it was about to ack the EOT: the pending ACK_READY
+  // gets downgraded to ACK_BUSY before it's actually sent. Unlike plain BUSY, ACK_BUSY still
+  // confirms the EOT was received, so the transfer is already complete - there's nothing left to
+  // resume once the receiver unpauses.
+  fixture.recipient.socket.state = LIFI_SOCKET_RX_PAUSED;
+  replace_current_tx_package_type(fixture.recipient.socket.transmitter, PACKAGE_TYPE_ACK_BUSY);
+
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.sender.socket.state);
+  TEST_ASSERT_NULL(fixture.sender.socket.tx_buffer);
+  TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.tx_buffer_length);
+  TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.tx_retries_count);
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
+  TEST_ASSERT_EQUAL_PTR(&fixture.sender.socket,
+                        Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.arg0_val);
+}
+
+void test_transmit_payload__eot_confirmation_retries_exhausted(void) {
+  LiFi_Socket_Pair_Fixture_t fixture;
+  LiFi_Socket_Pair_Fixture_Init(&fixture);
+  uint8_t payload[] = {'H', 'i'};
+  uint8_t read_buffer[sizeof(payload)] = {0};
+
+  LiFi_Socket_Read(&fixture.recipient.socket, read_buffer);
+  LiFi_Socket_Send(&fixture.sender.socket, payload, sizeof(payload));
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_CONFIRMATION, fixture.sender.socket.state);
+  TEST_ASSERT_EQUAL_UINT8(PACKAGE_TYPE_EOT,
+                          fixture.sender.socket.tx_package[TX_PACKAGE_PACKAGE_TYPE_INDEX]);
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onReceiveSuccessfulCallback_fake.call_count);
+
+  // Corrupt the EOT's confirmation and make this the retry that exhausts the limit.
+  replace_current_tx_package_type(fixture.recipient.socket.transmitter, PACKAGE_TYPE_NAK);
+  fixture.sender.socket.tx_retries_count = MAX_TRANSMIT_RETRIES_COUNT - 1;
+
+  Fake_LiFi_RunUntilIdle();
+
+  TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.tx_retries_count);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.sender.socket.state);
+  TEST_ASSERT_NULL(fixture.sender.socket.tx_buffer);
+  TEST_ASSERT_EQUAL_UINT8(0, fixture.sender.socket.tx_buffer_length);
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onErrorCallback_fake.call_count);
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_CONNECTION_ERROR, Mock_LiFi_Socket_onErrorCallback_fake.arg0_val);
+  TEST_ASSERT_EQUAL_PTR(&fixture.sender.socket, Mock_LiFi_Socket_onErrorCallback_fake.arg1_val);
+  TEST_ASSERT_EQUAL_UINT(0, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
+
+  // Receiver, meanwhile, already completed successfully before the sender gave up - the two
+  // sides disagree once retries are exhausted on a link that never lets the final ACK through.
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onReceiveSuccessfulCallback_fake.call_count);
+}
+
+void test_transmit_payload__idle_receiver_drops_eot_retry_with_mismatched_id(void) {
+  LiFi_Socket_Pair_Fixture_t fixture;
+  LiFi_Socket_Pair_Fixture_Init(&fixture);
+  uint8_t payload[] = {'H', 'i'};
+  uint8_t read_buffer[sizeof(payload)] = {0};
+
+  LiFi_Socket_Read(&fixture.recipient.socket, read_buffer);
+  LiFi_Socket_Send(&fixture.sender.socket, payload, sizeof(payload));
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+  Fake_LiFi_RunUntilIdle();
+
+  // Original EOT already completed the receive side; receiver is holding its pending ACK_READY.
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_ACK_EOD, fixture.recipient.socket.state);
+
+  replace_current_tx_package_type(fixture.recipient.socket.transmitter, PACKAGE_TYPE_NAK);
+  Fake_LiFi_RunUntilIdle();
+
+  // Receiver moved to IDLE once its (corrupted-to-NAK) ack finished transmitting; sender queued a
+  // retry EOT carrying the same id it has used for this transfer all along.
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.recipient.socket.state);
+
+  // Simulate the receiver no longer recognizing this id as its last completed transfer (e.g. a
+  // stale/foreign retry unrelated to what it just finished).
+  fixture.recipient.socket.rx_package_id = 99;
+
+  Fake_LiFi_RunUntilIdle();
+
+  // Mismatched id: receiver silently drops it - no ack, no re-fired callback.
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_IDLE, fixture.recipient.socket.state);
+  TEST_ASSERT_FALSE(fixture.recipient.socket.transmitter->is_busy);
+  TEST_ASSERT_EQUAL_UINT(1, Mock_LiFi_Socket_onReceiveSuccessfulCallback_fake.call_count);
+
+  // Sender is left waiting for a confirmation that will never come.
+  TEST_ASSERT_EQUAL(LIFI_SOCKET_WAITING_CONFIRMATION, fixture.sender.socket.state);
+  TEST_ASSERT_EQUAL_UINT(0, Mock_LiFi_Socket_onTransmissionSuccessfulCallback_fake.call_count);
+}
+
 void Test_LiFi_Protocol_Run(void) {
   RUN_TEST(test_transmit_payload);
   RUN_TEST(test_transmit_payload__wrong_crc);
@@ -579,4 +729,8 @@ void Test_LiFi_Protocol_Run(void) {
   RUN_TEST(test_transmit_payload__eot_not_acked);
   RUN_TEST(test_transmit_payload__eot_confirmation_has_wrong_crc);
   RUN_TEST(test_transmit_payload__eot_not_confirmed_resend_on_timeout);
+  RUN_TEST(test_transmit_payload__eot_confirmation_busy_pauses_sender);
+  RUN_TEST(test_transmit_payload__eot_confirmation_ack_busy_completes_transfer);
+  RUN_TEST(test_transmit_payload__eot_confirmation_retries_exhausted);
+  RUN_TEST(test_transmit_payload__idle_receiver_drops_eot_retry_with_mismatched_id);
 }
