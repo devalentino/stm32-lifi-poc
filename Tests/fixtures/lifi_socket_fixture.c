@@ -17,6 +17,8 @@ void LiFi_Socket_Fixture_Init(LiFi_Socket_Fixture_t *fixture) {
 void LiFi_Socket_Pair_Fixture_Init(LiFi_Socket_Pair_Fixture_t *fixture) {
   LiFi_Socket_Fixture_Init(&fixture->sender);
   LiFi_Socket_Fixture_Init(&fixture->recipient);
+  fixture->sender.socket.name = "sender";
+  fixture->recipient.socket.name = "recipient";
 
   Fake_LiFi_Link_Register(fixture->sender.socket.transmitter, fixture->recipient.socket.receiver);
   Fake_LiFi_Link_Register(fixture->recipient.socket.transmitter, fixture->sender.socket.receiver);
