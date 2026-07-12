@@ -30,7 +30,11 @@ option(LIFI_BUILD_TESTS "Build host-side unit tests" OFF)
       Tests/fake/fake_lifi_receiver.c
       Sources/lifi_host_interface.c
       Sources/lifi_modem.c
-      Sources/lifi_protocol.c
+      Sources/lifi_protocol/lifi_protocol.c
+      Sources/lifi_protocol/lifi_protocol_utils.c
+      Sources/lifi_protocol/lifi_protocol_tx.c
+      Sources/lifi_protocol/lifi_protocol_rx.c
+      Sources/lifi_protocol/lifi_protocol_router.c
       External/unity/src/unity.c
     )
 
@@ -38,6 +42,7 @@ option(LIFI_BUILD_TESTS "Build host-side unit tests" OFF)
       Tests/fake
       Tests/fixtures
       Sources
+      Sources/lifi_protocol
       External/unity/src
       External/fff
     )
@@ -85,7 +90,11 @@ set (PROJECT_SOURCES
 	Startup/startup_stm32f411retx.s
 	Sources/lifi_transmitter.c
 	Sources/lifi_receiver.c
-	Sources/lifi_protocol.c
+	Sources/lifi_protocol/lifi_protocol.c
+	Sources/lifi_protocol/lifi_protocol_utils.c
+	Sources/lifi_protocol/lifi_protocol_tx.c
+	Sources/lifi_protocol/lifi_protocol_rx.c
+	Sources/lifi_protocol/lifi_protocol_router.c
 	Sources/lifi_host_interface.c
 	Sources/lifi_modem.c
 	Sources/main.c
@@ -115,6 +124,7 @@ set (PROJECT_DEFINES
 set (PROJECT_INCLUDES
 	# LIST INCLUDE DIRECTORIES HERE
 	Sources
+	Sources/lifi_protocol
     Drivers/CMSIS/Include
     Drivers/CMSIS/Device/ST/STM32F4xx/Include
     Drivers/STM32F4xx_HAL_Driver/Inc
