@@ -43,14 +43,14 @@ void LiFi_Protocol_HandleReceivedPackage(LiFi_Socket_t *socket) {
     // Receiver got already processed package
     if (crc_is_valid && type == PACKAGE_TYPE_PAYLOAD && rx_id == socket->rx_package_id) {
       LiFi_Protocol_SendAck(socket);
-    // Receiver got new payload (positive scenario)
+      // Receiver got new payload (positive scenario)
     } else if (crc_is_valid && type == PACKAGE_TYPE_PAYLOAD &&
                rx_id == (uint8_t)(socket->rx_package_id + 1)) {
       LiFi_Protocol_HandlePayload(socket);
-    // Receiver got EOT
+      // Receiver got EOT
     } else if (crc_is_valid && type == PACKAGE_TYPE_EOT && rx_id == socket->rx_package_id) {
       LiFi_Protocol_HandleEot(socket);
-    // Receiver got status request
+      // Receiver got status request
     } else if (crc_is_valid && type == PACKAGE_TYPE_STATUS && rx_id == socket->rx_package_id) {
       LiFi_Protocol_SendReady(socket);
     } else {
